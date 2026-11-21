@@ -12,7 +12,9 @@ import pl.kas.olcys.api.dto.IdentifierDto;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -24,6 +26,7 @@ public class GithubConnector implements Web2Connector {
 
     private static final Logger log = LoggerFactory.getLogger(GithubConnector.class);
     private static final Set<String> HANDLE_TYPES = Set.of("NICK", "SOCIAL_LOGIN", "GITHUB");
+    private static final Set<String> SEARCH_TYPES = Set.of("FULL_NAME", "EMAIL");
     private static final int MAX_QUERIES = 2;
 
     private final RestClient restClient;
@@ -47,24 +50,72 @@ public class GithubConnector implements Web2Connector {
 
     @Override
     public List<RawEvidence> search(List<IdentifierDto> identifiers, int snapshotStep) {
-        List<String> handles = Web2ConnectorSupport.extractHandles(identifiers, HANDLE_TYPES);
-        if (handles.isEmpty()) {
+        if (identifiers == null || identifiers.isEmpty()) {
             return List.of();
         }
 
         List<RawEvidence> evidences = new ArrayList<>();
+        Set<String> fetchedLogins = new LinkedHashSet<>();
+
+        List<String> handles = Web2ConnectorSupport.extractHandles(identifiers, HANDLE_TYPES);
         int count = 0;
         for (String handle : handles) {
             if (count++ >= MAX_QUERIES) {
                 break;
             }
-            fetchUserProfile(handle).ifPresent(evidences::add);
-            fetchPublicEvents(handle).ifPresent(evidences::add);
+            if (fetchedLogins.add(handle.toLowerCase(Locale.ROOT))) {
+                fetchUserProfile(handle, handle).ifPresent(evidences::add);
+                fetchPublicEvents(handle, handle).ifPresent(evidences::add);
+            }
         }
+
+        int searchCount = 0;
+        for (IdentifierDto id : identifiers) {
+            if (searchCount >= MAX_QUERIES) {
+                break;
+            }
+            if (id == null || id.value() == null || id.value().isBlank()) {
+                continue;
+            }
+            String type = id.type() == null ? "" : id.type().trim().toUpperCase(Locale.ROOT);
+            if (!SEARCH_TYPES.contains(type)) {
+                continue;
+            }
+            searchCount++;
+            String queryValue = id.value().trim();
+            searchUserLogin(queryValue).ifPresent(login -> {
+                if (fetchedLogins.add(login.toLowerCase(Locale.ROOT))) {
+                    fetchUserProfile(login, queryValue).ifPresent(evidences::add);
+                    fetchPublicEvents(login, queryValue).ifPresent(evidences::add);
+                }
+            });
+        }
+
         return List.copyOf(evidences);
     }
 
-    private Optional<RawEvidence> fetchUserProfile(String handle) {
+    private Optional<String> searchUserLogin(String query) {
+        String searchUrl = "https://api.github.com/search/users?q="
+                + Web2ConnectorSupport.urlEncode(query) + "&per_page=1";
+        Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
+                restClient, searchUrl, log, "application/vnd.github+json");
+        if (bodyOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            JsonNode items = objectMapper.readTree(bodyOpt.get()).path("items");
+            if (!items.isArray() || items.isEmpty()) {
+                return Optional.empty();
+            }
+            String login = textOrEmpty(items.get(0), "login");
+            return login.isBlank() ? Optional.empty() : Optional.of(login);
+        } catch (Exception ex) {
+            log.debug("Failed to parse GitHub user search JSON for {}: {}", query, ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private Optional<RawEvidence> fetchUserProfile(String handle, String matchedIdentifier) {
         String apiUrl = "https://api.github.com/users/" + Web2ConnectorSupport.urlEncode(handle);
         Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
                 restClient, apiUrl, log, "application/vnd.github+json");
@@ -115,7 +166,7 @@ public class GithubConnector implements Web2Connector {
                     Instant.now(),
                     Web2ConnectorSupport.sha256(rawBody),
                     Web2ConnectorSupport.truncateSnippet(summary.toString()),
-                    handle,
+                    matchedIdentifier,
                     "OWN_PROFILE_VERIFIED"
             ));
         } catch (Exception ex) {
@@ -124,7 +175,7 @@ public class GithubConnector implements Web2Connector {
         }
     }
 
-    private Optional<RawEvidence> fetchPublicEvents(String handle) {
+    private Optional<RawEvidence> fetchPublicEvents(String handle, String matchedIdentifier) {
         String eventsUrl = "https://api.github.com/users/" + Web2ConnectorSupport.urlEncode(handle)
                 + "/events/public?per_page=10";
         Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
@@ -170,7 +221,7 @@ public class GithubConnector implements Web2Connector {
                     Instant.now(),
                     Web2ConnectorSupport.sha256(rawBody),
                     Web2ConnectorSupport.truncateSnippet(sb.toString()),
-                    handle,
+                    matchedIdentifier,
                     "OWN_PROFILE_VERIFIED"
             ));
         } catch (Exception ex) {

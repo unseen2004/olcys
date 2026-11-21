@@ -91,15 +91,15 @@ public class EnsConnector implements Web2Connector {
         String rawBody = bodyOpt.get();
         try {
             JsonNode root = objectMapper.readTree(rawBody);
-            String resolvedAddress = root.path("address").asText("");
-            String resolvedName = root.path("name").asText("");
-            String displayName = root.path("displayName").asText("");
+            String resolvedAddress = textOrEmpty(root, "address");
+            String resolvedName = textOrEmpty(root, "name");
+            String displayName = textOrEmpty(root, "displayName");
 
-            if (resolvedAddress.isBlank() && resolvedName.isBlank()) {
+            if (resolvedAddress.isBlank() || resolvedName.isBlank()) {
                 return Optional.empty();
             }
 
-            String targetLabel = resolvedName.isBlank() ? query : resolvedName;
+            String targetLabel = resolvedName;
             String snippet = String.format(
                     "Rekord ENS (Ethereum Name Service): nazwa '%s' (display: '%s') powiązana z adresem ETH %s",
                     targetLabel, displayName, resolvedAddress);
@@ -118,5 +118,14 @@ public class EnsConnector implements Web2Connector {
             log.debug("Failed to parse ENS JSON for {}: {}", query, ex.getMessage());
             return Optional.empty();
         }
+    }
+
+    private static String textOrEmpty(JsonNode root, String field) {
+        JsonNode node = root.path(field);
+        if (node.isMissingNode() || node.isNull()) {
+            return "";
+        }
+        String text = node.asText("");
+        return "null".equalsIgnoreCase(text.trim()) ? "" : text.trim();
     }
 }

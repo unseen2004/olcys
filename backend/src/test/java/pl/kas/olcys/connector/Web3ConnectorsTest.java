@@ -235,6 +235,36 @@ class Web3ConnectorsTest {
         assertThat(ensResult.get(0).snippet()).contains("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
         assertThat(ensResult.get(0).sha256()).hasSize(64);
         ensServer.verify();
+
+        // Live ENS unregistered address returns name: null -> must NOT emit evidence
+        RestClient.Builder ensNullBuilder = RestClient.builder();
+        MockRestServiceServer ensNullServer = MockRestServiceServer.bindTo(ensNullBuilder).build();
+        ensNullServer.expect(requestTo("https://api.ensideas.com/ens/resolve/0x1234567890123456789012345678901234567890"))
+                .andRespond(withSuccess(
+                        "{\"address\":\"0x1234567890123456789012345678901234567890\",\"name\":null,\"displayName\":\"0x1234...7890\"}",
+                        MediaType.APPLICATION_JSON));
+        EnsConnector ensNull = new EnsConnector(ensNullBuilder, new ObjectMapper());
+        List<RawEvidence> ensNullResult = ensNull.search(
+                List.of(new IdentifierDto("CRYPTO_ADDRESS", "0x1234567890123456789012345678901234567890")), 1);
+        assertThat(ensNullResult).isEmpty();
+        ensNullServer.verify();
+
+        // Live GitHub search by FULL_NAME resolves login and fetches profile + events
+        RestClient.Builder ghSearchBuilder = RestClient.builder();
+        MockRestServiceServer ghSearchServer = MockRestServiceServer.bindTo(ghSearchBuilder).build();
+        ghSearchServer.expect(requestTo("https://api.github.com/search/users?q=Linus+Torvalds&per_page=1"))
+                .andRespond(withSuccess("{\"total_count\":1,\"items\":[{\"login\":\"torvalds\"}]}", MediaType.APPLICATION_JSON));
+        ghSearchServer.expect(requestTo("https://api.github.com/users/torvalds"))
+                .andRespond(withSuccess("{\"login\":\"torvalds\",\"name\":\"Linus Torvalds\",\"bio\":\"Linux creator\",\"html_url\":\"https://github.com/torvalds\"}", MediaType.APPLICATION_JSON));
+        ghSearchServer.expect(requestTo("https://api.github.com/users/torvalds/events/public?per_page=10"))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+
+        GithubConnector ghSearch = new GithubConnector(ghSearchBuilder, new ObjectMapper());
+        List<RawEvidence> ghSearchResult = ghSearch.search(List.of(new IdentifierDto("FULL_NAME", "Linus Torvalds")), 1);
+        assertThat(ghSearchResult).hasSize(1);
+        assertThat(ghSearchResult.get(0).url()).isEqualTo("https://github.com/torvalds");
+        assertThat(ghSearchResult.get(0).matchedIdentifier()).isEqualTo("Linus Torvalds");
+        ghSearchServer.verify();
     }
 
     private void assertAllTransactionAddressesValid(RawOnChainProfile profile) {

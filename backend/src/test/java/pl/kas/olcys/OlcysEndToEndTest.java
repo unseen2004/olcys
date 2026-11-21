@@ -306,6 +306,103 @@ class OlcysEndToEndTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void shouldValidateAllInputTypesAndDirectCryptoAddressScoring() throws Exception {
+        // 1. Direct private EOA CRYPTO_ADDRESS without Web2 traces -> 50% DIRECT_ANALYST_INPUT
+        CreateSubjectRequest directWalletReq = new CreateSubjectRequest(
+                "Bezpośredni portfel prywatny (ETH)",
+                List.of(new IdentifierDto("CRYPTO_ADDRESS", "0x1234567890123456789012345678901234567890")),
+                AnalysisMode.SYNTHETIC,
+                List.of("Synthetic"),
+                List.of("ETH"),
+                1
+        );
+        MvcResult directRes = mockMvc.perform(post("/api/subjects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(directWalletReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        AnalysisRunDto directRun = objectMapper.readValue(
+                directRes.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                AnalysisRunDto.class
+        );
+        assertThat(directRun.confirmedAddresses()).hasSize(1);
+        assertThat(directRun.confirmedAddresses().get(0).confidenceScore()).isEqualTo(50);
+        assertThat(directRun.confirmedAddresses().get(0).scoreBreakdown().get(0).ruleId())
+                .isEqualTo("DIRECT_ANALYST_INPUT");
+
+        // 2. Direct CRYPTO_ADDRESS pointing to a smart contract / stablecoin -> rejected 0% FP
+        CreateSubjectRequest contractReq = new CreateSubjectRequest(
+                "Bezpośredni kontrakt USDT",
+                List.of(new IdentifierDto("CRYPTO_ADDRESS", "0xdAC17F958D2ee523a2206206994597C13D831ec7")),
+                AnalysisMode.SYNTHETIC,
+                List.of("Synthetic"),
+                List.of("ETH"),
+                1
+        );
+        MvcResult contractRes = mockMvc.perform(post("/api/subjects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(contractReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        AnalysisRunDto contractRun = objectMapper.readValue(
+                contractRes.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                AnalysisRunDto.class
+        );
+        assertThat(contractRun.confirmedAddresses()).isEmpty();
+        assertThat(contractRun.rejectedAddresses()).hasSize(1);
+        assertThat(contractRun.rejectedAddresses().get(0).confidenceScore()).isZero();
+        assertThat(contractRun.rejectedAddresses().get(0).rejectionCategory()).isEqualTo("STABLECOIN");
+
+        // 3. Single FULL_NAME / EMAIL / SOCIAL_LOGIN / TELEGRAM_ID matching Scenario 1 or unknown input
+        for (IdentifierDto id : List.of(
+                new IdentifierDto("FULL_NAME", "Jan Kowalski"),
+                new IdentifierDto("EMAIL", "janek.dev@example.pl"),
+                new IdentifierDto("SOCIAL_LOGIN", "krypto_janek")
+        )) {
+            CreateSubjectRequest singleIdReq = new CreateSubjectRequest(
+                    "Test typu " + id.type(),
+                    List.of(id),
+                    AnalysisMode.SYNTHETIC,
+                    List.of("GitHub", "KantorP2P.pl", "WaybackArchive", "ForumKrypto.pl"),
+                    List.of("ETH", "BTC"),
+                    1
+            );
+            MvcResult res = mockMvc.perform(post("/api/subjects")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(singleIdReq)))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+            AnalysisRunDto run = objectMapper.readValue(
+                    res.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                    AnalysisRunDto.class
+            );
+            assertThat(run.confirmedAddresses()).hasSize(2);
+        }
+
+        // 4. Unknown identifier with no matches returns clean 201 with 0 findings and valid 3-zone report
+        CreateSubjectRequest emptyMatchReq = new CreateSubjectRequest(
+                "Podmiot bez śladów OSINT",
+                List.of(new IdentifierDto("NICK", "nieistniejacy_uzytkownik_xyz_999")),
+                AnalysisMode.SYNTHETIC,
+                List.of("Synthetic"),
+                List.of("ETH", "BTC", "TRON"),
+                1
+        );
+        MvcResult emptyRes = mockMvc.perform(post("/api/subjects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(emptyMatchReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        AnalysisRunDto emptyRun = objectMapper.readValue(
+                emptyRes.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                AnalysisRunDto.class
+        );
+        assertThat(emptyRun.confirmedAddresses()).isEmpty();
+        assertThat(emptyRun.rejectedAddresses()).isEmpty();
+        assertThat(emptyRun.report().zone3VerificationConclusions().pit38RiskIndicatorsPl()).isNotEmpty();
+    }
+
     private static AddressFindingDto findByAddress(List<AddressFindingDto> list, String address) {
         return list.stream()
                 .filter(f -> f.address().equalsIgnoreCase(address))
