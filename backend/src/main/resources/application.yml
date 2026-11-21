@@ -32,8 +32,8 @@ olcys:
   ai:
     provider: ${OLCYS_AI_PROVIDER:local-rules}
     base-url: ${OLCYS_AI_BASE_URL:http://localhost:11434/v1}
-    model: ${OLCYS_AI_MODEL:llama3.1:8b}
+    model: ${OLCYS_AI_MODEL:llama3.2:latest}
     allow-external: ${OLCYS_AI_ALLOW_EXTERNAL:false}
-    timeout-seconds: 5
+    timeout-seconds: ${OLCYS_AI_TIMEOUT_SECONDS:45}
   connectors:
     timeout-seconds: 5

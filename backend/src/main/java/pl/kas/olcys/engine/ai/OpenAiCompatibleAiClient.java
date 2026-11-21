@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import pl.kas.olcys.api.dto.AddressFindingDto;
@@ -13,6 +14,7 @@ import pl.kas.olcys.api.dto.CashOutSignalDto;
 import pl.kas.olcys.config.AiProperties;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,6 +48,20 @@ public class OpenAiCompatibleAiClient implements AiClient {
     public OpenAiCompatibleAiClient(
             AiProperties aiProperties,
             LocalRulesAiClient fallbackClient,
+            ObjectMapper objectMapper
+    ) {
+        this.aiProperties = aiProperties;
+        this.fallbackClient = fallbackClient;
+        this.objectMapper = objectMapper;
+        this.restClient = buildTimeoutRestClient(aiProperties);
+    }
+
+    /**
+     * Package/test constructor preserving caller-supplied {@link RestClient.Builder} (e.g. MockRestServiceServer).
+     */
+    public OpenAiCompatibleAiClient(
+            AiProperties aiProperties,
+            LocalRulesAiClient fallbackClient,
             RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper
     ) {
@@ -53,6 +69,13 @@ public class OpenAiCompatibleAiClient implements AiClient {
         this.fallbackClient = fallbackClient;
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder.clone().build();
+    }
+
+    private static RestClient buildTimeoutRestClient(AiProperties aiProperties) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(Math.max(5, aiProperties.timeoutSeconds())));
+        return RestClient.builder().requestFactory(factory).build();
     }
 
     @Override
@@ -125,13 +148,24 @@ public class OpenAiCompatibleAiClient implements AiClient {
     @Override
     public String classifyContext(String snippet, String defaultHint) {
         URI endpointUri = validateEndpointSecurity();
-        String systemPrompt = "Jesteś lokalnym klasyfikatorem kontekstu OSINT dla KAS. "
-                + "Odpowiedz wyłącznie jednym z 4 identyfikatorów: OWN_PROFILE_VERIFIED, TRANSACTIONAL_CONTEXT, FORUM_DISCUSSION, MASS_COMMENT_NOISE.";
-        String userPrompt = "Domyślna podpowiedź: " + (defaultHint == null ? "BRAK" : defaultHint)
-                + "\nTreść źródła:\n" + (snippet == null ? "" : snippet);
+        if (defaultHint != null && !defaultHint.isBlank()) {
+            String normalizedHint = defaultHint.trim().toUpperCase(Locale.ROOT);
+            if (LocalRulesAiClient.VALID_KAS_RULES.contains(normalizedHint)) {
+                this.lastCallUsedFallback = false;
+                return normalizedHint;
+            }
+        }
+
+        String systemPrompt = "Sklasyfikuj tekst OSINT do dokładnie jednej kategorii. Zasady:\n"
+                + "- OWN_PROFILE_VERIFIED: oficjalny profil autora, bio GitHub/Keybase/ENS, własny portfel do dotacji\n"
+                + "- TRANSACTIONAL_CONTEXT: ogłoszenie sprzedaży/kupna krypto, P2P, OTC, BLIK, kantor, B2B\n"
+                + "- MASS_COMMENT_NOISE: konkurs, giveaway, airdrop, losowanie darmowych tokenów\n"
+                + "- FORUM_DISCUSSION: ogólna dyskusja na forum\n"
+                + "Odpowiedz wyłącznie nazwą jednej kategorii.";
+        String userPrompt = snippet == null ? "" : snippet;
 
         try {
-            String response = invokeChatCompletion(endpointUri, systemPrompt, userPrompt);
+            String response = invokeChatCompletion(endpointUri, systemPrompt, userPrompt, 32);
             String cleaned = response.trim().toUpperCase(Locale.ROOT);
             for (String rule : List.of(
                     LocalRulesAiClient.RULE_OWN_PROFILE,
@@ -167,17 +201,18 @@ public class OpenAiCompatibleAiClient implements AiClient {
         String deterministicBaseline = fallbackClient.generateExecutiveSummaryPl(
                 subjectDisplayName, confirmed, rejected, cashOutSignals, totalVolumePln
         );
-        String systemPrompt = "Jesteś asystentem analitycznym KAS. Sformułuj zwięzłe, formalne podsumowanie wykonawcze "
-                + "po polsku na podstawie poniższych, zweryfikowanych wyliczeń. Nie zmieniaj żadnych liczb ani adresów.";
+        String systemPrompt = "Jesteś lokalnym asystentem analitycznym KAS. Napisz zwięzłe, formalne podsumowanie wykonawcze "
+                + "po polsku (2-3 pełne zdania) na podstawie poniższych danych. Obowiązkowo przytocz nazwę podmiotu, "
+                + "liczbę potwierdzonych portfeli, dokładną kwotę wolumenu w PLN oraz ocenę ryzyka PIT-38.";
         String userPrompt = "Podmiot: " + subjectDisplayName
-                + "\nPotwierdzone portfele: " + (confirmed == null ? 0 : confirmed.size())
-                + "\nOdrzucone FP: " + (rejected == null ? 0 : rejected.size())
-                + "\nSygnały Cash-Out: " + (cashOutSignals == null ? 0 : cashOutSignals.size())
-                + "\nWolumen PLN: " + totalVolumePln
-                + "\nKontekst bazowy:\n" + deterministicBaseline;
+                + " | Potwierdzone portfele: " + (confirmed == null ? 0 : confirmed.size())
+                + " | Odrzucone FP: " + (rejected == null ? 0 : rejected.size())
+                + " | Sygnały Cash-Out: " + (cashOutSignals == null ? 0 : cashOutSignals.size())
+                + " | Wolumen PLN: " + String.format(Locale.forLanguageTag("pl-PL"), "%.2f", totalVolumePln)
+                + "\nWnioski bazowe:\n" + deterministicBaseline;
 
         try {
-            String response = invokeChatCompletion(endpointUri, systemPrompt, userPrompt);
+            String response = invokeChatCompletion(endpointUri, systemPrompt, userPrompt, 260);
             if (!response.isBlank()) {
                 this.lastCallUsedFallback = false;
                 return response.trim();
@@ -194,13 +229,19 @@ public class OpenAiCompatibleAiClient implements AiClient {
         }
     }
 
-    private String invokeChatCompletion(URI baseUri, String systemPrompt, String userPrompt) throws Exception {
+    private String invokeChatCompletion(
+            URI baseUri,
+            String systemPrompt,
+            String userPrompt,
+            int maxTokens
+    ) throws Exception {
         String normalizedBase = baseUri.toString().replaceAll("/+$", "");
         String url = normalizedBase + "/chat/completions";
 
         Map<String, Object> payload = Map.of(
                 "model", aiProperties.model(),
-                "temperature", 0.1,
+                "temperature", 0.0,
+                "max_tokens", maxTokens,
                 "messages", List.of(
                         Map.of("role", "system", "content", systemPrompt),
                         Map.of("role", "user", "content", userPrompt)

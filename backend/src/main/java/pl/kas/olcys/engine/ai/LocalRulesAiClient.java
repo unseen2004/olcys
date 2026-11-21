@@ -25,7 +25,7 @@ public class LocalRulesAiClient implements AiClient {
     public static final String RULE_FORUM = "FORUM_DISCUSSION";
     public static final String RULE_NOISE = "MASS_COMMENT_NOISE";
 
-    private static final Set<String> VALID_KAS_RULES = Set.of(
+    public static final Set<String> VALID_KAS_RULES = Set.of(
             RULE_OWN_PROFILE,
             RULE_TRANSACTIONAL,
             RULE_FORUM,

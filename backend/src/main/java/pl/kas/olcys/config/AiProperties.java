@@ -18,10 +18,10 @@ public record AiProperties(
             baseUrl = "http://localhost:11434/v1";
         }
         if (model == null || model.isBlank()) {
-            model = "llama3.1:8b";
+            model = "llama3.2:latest";
         }
         if (timeoutSeconds <= 0) {
-            timeoutSeconds = 5;
+            timeoutSeconds = 45;
         }
     }
 }
