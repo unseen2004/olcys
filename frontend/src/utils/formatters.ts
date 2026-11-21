@@ -201,6 +201,11 @@ export function translateCashOutSignalType(type: string | null | undefined): {
         label: 'Cykliczna wypłata środków',
         badgeClass: 'bg-rose-50 text-[#B91C1C] border-rose-200',
       };
+    case 'AML_STRUCTURING_OR_2HOP':
+      return {
+        label: 'Przepływ 2-Hop / Dzielenie transz (AML)',
+        badgeClass: 'bg-purple-50 text-purple-900 border-purple-200',
+      };
     default:
       return {
         label: type ? type : 'Sygnał przepływu',

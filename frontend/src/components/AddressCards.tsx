@@ -231,6 +231,11 @@ export const AddressCards: React.FC<AddressCardsProps> = ({ run }) => {
                               Suma kontrolna poprawna
                             </span>
                           )}
+                          {wallet.network === 'ETH' && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[11px] font-semibold text-indigo-800">
+                              EVM Multi-Chain (ETH • Polygon • Arbitrum • Base)
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
@@ -264,6 +269,28 @@ export const AddressCards: React.FC<AddressCardsProps> = ({ run }) => {
                               Eksplorator
                               <ExternalLink className="w-3 h-3" />
                             </a>
+                          )}
+                          {wallet.network === 'ETH' && (
+                            <>
+                              <a
+                                href={`https://polygonscan.com/address/${wallet.address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50/70 px-2 py-1 text-[11px] font-medium text-indigo-900 hover:bg-indigo-100"
+                              >
+                                Polygonscan
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                              <a
+                                href={`https://arbiscan.io/address/${wallet.address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50/70 px-2 py-1 text-[11px] font-medium text-indigo-900 hover:bg-indigo-100"
+                              >
+                                Arbiscan
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </>
                           )}
                         </div>
                       </div>

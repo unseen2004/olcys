@@ -10,6 +10,7 @@ import pl.kas.olcys.api.dto.AnalysisMode;
 import pl.kas.olcys.api.dto.IdentifierDto;
 import pl.kas.olcys.connector.web2.EnsConnector;
 import pl.kas.olcys.connector.web2.GithubConnector;
+import pl.kas.olcys.connector.web2.KeybaseConnector;
 import pl.kas.olcys.connector.web2.RawEvidence;
 import pl.kas.olcys.connector.web2.RedditConnector;
 import pl.kas.olcys.connector.web2.WaybackConnector;
@@ -185,6 +186,8 @@ class Web3ConnectorsTest {
         MockRestServiceServer ghServer = MockRestServiceServer.bindTo(ghBuilder).build();
         ghServer.expect(requestTo("https://api.github.com/users/testuser"))
                 .andRespond(withServerError());
+        ghServer.expect(requestTo("https://api.github.com/repos/testuser/testuser/readme"))
+                .andRespond(withServerError());
         ghServer.expect(requestTo("https://api.github.com/users/testuser/events/public?per_page=10"))
                 .andRespond(withServerError());
 
@@ -249,22 +252,48 @@ class Web3ConnectorsTest {
         assertThat(ensNullResult).isEmpty();
         ensNullServer.verify();
 
-        // Live GitHub search by FULL_NAME resolves login and fetches profile + events
+        // Live GitHub search by FULL_NAME resolves login and fetches profile + README.md + events
         RestClient.Builder ghSearchBuilder = RestClient.builder();
         MockRestServiceServer ghSearchServer = MockRestServiceServer.bindTo(ghSearchBuilder).build();
         ghSearchServer.expect(requestTo("https://api.github.com/search/users?q=Linus+Torvalds&per_page=1"))
                 .andRespond(withSuccess("{\"total_count\":1,\"items\":[{\"login\":\"torvalds\"}]}", MediaType.APPLICATION_JSON));
         ghSearchServer.expect(requestTo("https://api.github.com/users/torvalds"))
                 .andRespond(withSuccess("{\"login\":\"torvalds\",\"name\":\"Linus Torvalds\",\"bio\":\"Linux creator\",\"html_url\":\"https://github.com/torvalds\"}", MediaType.APPLICATION_JSON));
+        ghSearchServer.expect(requestTo("https://api.github.com/repos/torvalds/torvalds/readme"))
+                .andRespond(withSuccess("Wsparcie BTC: bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", MediaType.TEXT_PLAIN));
         ghSearchServer.expect(requestTo("https://api.github.com/users/torvalds/events/public?per_page=10"))
                 .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
 
         GithubConnector ghSearch = new GithubConnector(ghSearchBuilder, new ObjectMapper());
         List<RawEvidence> ghSearchResult = ghSearch.search(List.of(new IdentifierDto("FULL_NAME", "Linus Torvalds")), 1);
-        assertThat(ghSearchResult).hasSize(1);
+        assertThat(ghSearchResult).hasSize(2);
         assertThat(ghSearchResult.get(0).url()).isEqualTo("https://github.com/torvalds");
         assertThat(ghSearchResult.get(0).matchedIdentifier()).isEqualTo("Linus Torvalds");
+        assertThat(ghSearchResult.get(1).snippet()).contains("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq");
         ghSearchServer.verify();
+
+        // Live Keybase user lookup parsing (proofs + cryptocurrency_addresses)
+        RestClient.Builder kbBuilder = RestClient.builder();
+        MockRestServiceServer kbServer = MockRestServiceServer.bindTo(kbBuilder).build();
+        String kbJson = """
+                {
+                  "status": {"code": 0, "name": "OK"},
+                  "them": [{
+                    "basics": {"username": "janek_kb"},
+                    "profile": {"full_name": "Jan Kowalski", "bio": "Web3 dev"},
+                    "proofs_summary": {"all": [{"proof_type": "github", "nametag": "krypto_janek"}]},
+                    "cryptocurrency_addresses": {"bitcoin": [{"address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"}]}
+                  }]
+                }
+                """;
+        kbServer.expect(requestTo("https://keybase.io/_/api/1.0/user/lookup.json?usernames=janek_kb"))
+                .andRespond(withSuccess(kbJson, MediaType.APPLICATION_JSON));
+        KeybaseConnector kb = new KeybaseConnector(kbBuilder, new ObjectMapper());
+        List<RawEvidence> kbResult = kb.search(List.of(new IdentifierDto("NICK", "janek_kb")), 1);
+        assertThat(kbResult).hasSize(1);
+        assertThat(kbResult.get(0).url()).isEqualTo("https://keybase.io/janek_kb");
+        assertThat(kbResult.get(0).snippet()).contains("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq");
+        kbServer.verify();
     }
 
     private void assertAllTransactionAddressesValid(RawOnChainProfile profile) {

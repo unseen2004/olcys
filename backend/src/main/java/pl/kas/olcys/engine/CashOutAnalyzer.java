@@ -73,6 +73,8 @@ public class CashOutAnalyzer {
         Set<String> interactedEntities = new LinkedHashSet<>();
 
         int cexOrCaspOutflowCount = 0;
+        int stablecoinOrDexOutflowCount = 0;
+        int structuringTranches = 0;
         double recurringTotalPln = 0.0;
         RawTransaction latestRecurringTx = null;
         Set<String> recurringCounterparties = new LinkedHashSet<>();
@@ -115,6 +117,10 @@ public class CashOutAnalyzer {
                 signals.add(buildSignalDto(profile, tx, signalType, cpTagName, cpRole, descriptionPl));
             }
 
+            if ("STABLECOIN_CONVERSION".equals(signalType)) {
+                stablecoinOrDexOutflowCount++;
+            }
+
             if (isOutflow && cpTagOpt.isPresent()) {
                 EntityRole role = cpTagOpt.get().role();
                 if (role == EntityRole.CEX || role == EntityRole.CASP_P2P) {
@@ -122,6 +128,9 @@ public class CashOutAnalyzer {
                     recurringTotalPln += tx.estimatedPln();
                     latestRecurringTx = tx;
                     recurringCounterparties.add(cpTagOpt.get().name());
+                    if (tx.estimatedPln() >= 3_500.0 && tx.estimatedPln() <= 25_000.0) {
+                        structuringTranches++;
+                    }
                 }
             }
         }
@@ -146,6 +155,29 @@ public class CashOutAnalyzer {
                             recurringTotalPln
                     ),
                     "Wystąp do wskazanych podmiotów CASP o zestawienie wszystkich wypłat fiat (IBAN/BLIK) oraz zweryfikuj ciągłość przychodów w zeznaniach PIT-38."
+            ));
+        }
+
+        if (latestRecurringTx != null && ((stablecoinOrDexOutflowCount >= 1 && cexOrCaspOutflowCount >= 1) || structuringTranches >= 2)) {
+            String cpSummary = String.join(", ", recurringCounterparties);
+            signals.add(new CashOutSignalDto(
+                    "sig-" + UUID.randomUUID().toString().substring(0, 8),
+                    "AML_STRUCTURING_OR_2HOP",
+                    "HIGH",
+                    profile.address(),
+                    profile.network(),
+                    latestRecurringTx.txHash(),
+                    latestRecurringTx.timestamp(),
+                    Math.round(recurringTotalPln * 100.0) / 100.0,
+                    "Wieloetapowe wyjście / dzielenie transz (2-Hop / Structuring)",
+                    String.format(
+                            "Wykryto wieloetapową ścieżkę wyjścia z portfela %s (konwersja DEX/Stablecoin: %d× oraz transze wyjścia na CEX/CASP %s: %d× w przedziale 3,5–25 tys. PLN).",
+                            profile.address(),
+                            stablecoinOrDexOutflowCount,
+                            cpSummary,
+                            structuringTranches
+                    ),
+                    "Zweryfikuj ciąg transakcji pośrednich (swap DEX -> stablecoin -> giełda) oraz sprawdź, czy dzielenie wypłat na transze nie służyło ominięciu progów raportowania AML/Travel Rule."
             ));
         }
 

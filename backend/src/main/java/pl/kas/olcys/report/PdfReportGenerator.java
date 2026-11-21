@@ -83,6 +83,83 @@ public class PdfReportGenerator {
         }
     }
 
+    public byte[] generateCaspRequestPdf(AnalysisRunDto run) {
+        if (run == null) {
+            throw new IllegalArgumentException("Nie można wygenerować projektu wezwania CASP dla pustego uruchomienia.");
+        }
+
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+
+            PDType0Font regularFont = loadClasspathFont(document, "fonts/DejaVuSans.ttf");
+            PDType0Font boldFont = loadClasspathFont(document, "fonts/DejaVuSans-Bold.ttf");
+
+            PdfCursor c = new PdfCursor(document, regularFont, boldFont);
+            c.startNewPage(false);
+
+            float bannerHeight = 64f;
+            c.ensureSpace(bannerHeight + 40f);
+            c.fillRect(MARGIN_X, c.y - bannerHeight, CONTENT_WIDTH, bannerHeight, COLOR_NAVY);
+            c.drawText(c.bold, 12f, Color.WHITE, MARGIN_X + 12f, c.y - 20f,
+                    "PROJEKT WEZWANIA DO PODMIOTU CASP / GIEŁDY KRYPTOWALUT");
+            c.drawText(c.bold, 9.5f, new Color(186, 230, 253), MARGIN_X + 12f, c.y - 36f,
+                    "Podstawa: art. 182 Ordynacji podatkowej / art. 48 ustawy o KAS / Dyrektywa DAC8");
+            c.drawText(c.regular, 8.5f, new Color(226, 232, 240), MARGIN_X + 12f, c.y - 52f,
+                    "Sprawa: " + safeText(run.subjectDisplayName()) + " | Analiza ID: " + run.runId() + " | Data UTC: " + formatUtc(run.createdAt()));
+            c.y -= (bannerHeight + 14f);
+
+            c.drawZoneHeader("SEKCJA A: ZIDENTYFIKOWANE PORTFELE NIEHOSTOWANE PODMIOTU", COLOR_NAVY);
+            if (run.confirmedAddresses() == null || run.confirmedAddresses().isEmpty()) {
+                c.drawWrappedParagraph(c.regular, 8.5f, COLOR_SLATE, MARGIN_X + 4f, CONTENT_WIDTH - 8f, 11.5f,
+                        "Brak zatwierdzonych portfeli niehostowanych.");
+            } else {
+                for (AddressFindingDto wallet : run.confirmedAddresses()) {
+                    c.drawWrappedParagraph(c.bold, 8.5f, COLOR_NAVY, MARGIN_X + 4f, CONTENT_WIDTH - 8f, 11.5f,
+                            String.format("• [%s] %s — Wskaźnik Pewności KAS: %d%% (%s)",
+                                    wallet.network(), wallet.address(), wallet.confidenceScore(), wallet.confidenceLevelPl()));
+                }
+            }
+            c.y -= 6f;
+
+            c.drawZoneHeader("SEKCJA B: WYKAZ TRANSAKCJI PRZEPŁYWU DO PODMIOTÓW CASP / CEX", COLOR_AMBER);
+            List<CashOutSignalDto> transferSignals = run.cashOutSignals() == null ? List.of() : run.cashOutSignals().stream()
+                    .filter(s -> "CEX_OFFRAMP".equals(s.signalType()) || "P2P_OR_GATEWAY".equals(s.signalType()))
+                    .toList();
+            if (transferSignals.isEmpty()) {
+                c.drawWrappedParagraph(c.regular, 8.5f, COLOR_SLATE, MARGIN_X + 4f, CONTENT_WIDTH - 8f, 11.5f,
+                        "Nie zarejestrowano bezpośrednich transferów wychodzących na adresy giełd CEX/CASP.");
+            } else {
+                for (int i = 0; i < transferSignals.size(); i++) {
+                    CashOutSignalDto sig = transferSignals.get(i);
+                    c.drawWrappedParagraph(c.bold, 8.5f, COLOR_SLATE, MARGIN_X + 4f, CONTENT_WIDTH - 8f, 11.5f,
+                            String.format("%d) Podmiot docelowy: %s (%s) | Kwota szac.: %.2f PLN | Data: %s",
+                                    i + 1, safeText(sig.counterpartyName()), sig.network(), sig.estimatedPln(), formatUtc(sig.timestamp())));
+                    c.drawWrappedParagraph(c.regular, 8f, COLOR_MUTED, MARGIN_X + 12f, CONTENT_WIDTH - 16f, 11f,
+                            "Portfel źródłowy: " + safeText(sig.address()) + " | TX Hash: " + safeText(sig.txHash()));
+                    c.y -= 2f;
+                }
+            }
+            c.y -= 6f;
+
+            c.drawZoneHeader("SEKCJA C: ZAKRES ŻĄDANYCH DANYCH KYC / AML I ROZLICZEŃ FIAT", COLOR_GREEN);
+            for (String item : List.of(
+                    "1. Pełne dane identyfikacyjne (KYC) właściciela rachunku depozytowego powiązanego ze wskazanymi powyżej transakcjami przychodzącymi (imię, nazwisko, PESEL/NIP, seria i numer dokumentu tożsamości, adres zamieszkania).",
+                    "2. Wykaz wszystkich rachunków bankowych (IBAN), kart płatniczych i instrumentów BLIK/SEPA powiązanych z wypłatami walut tradycyjnych (PLN/EUR/USD) z tego konta.",
+                    "3. Zestawienie wszystkich operacji wpłat i wypłat kryptowalut oraz walut tradycyjnych (wraz z datami UTC, kwotami i prowizjami) za okres objęty analizą na potrzeby weryfikacji zeznania podatkowego PIT-38 (art. 30b ustawy o PIT).",
+                    "4. Adresy IP logowań oraz powiązane identyfikatory urządzenia z rejestru dostawcy usług kryptoaktywów (CASP)."
+            )) {
+                c.drawWrappedParagraph(c.regular, 8.5f, COLOR_SLATE, MARGIN_X + 4f, CONTENT_WIDTH - 8f, 12f, item);
+                c.y -= 3f;
+            }
+
+            c.closeCurrentStream();
+            document.save(baos);
+            return baos.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException("Błąd podczas generowania projektu wezwania CASP PDF dla " + run.runId(), ex);
+        }
+    }
+
     private void drawMasthead(PdfCursor c, AnalysisRunDto run) throws IOException {
         float bannerHeight = 68f;
         c.ensureSpace(bannerHeight + 48f);

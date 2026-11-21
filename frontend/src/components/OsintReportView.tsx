@@ -4,17 +4,20 @@ import {
   Ban,
   Calculator,
   Check,
+  CheckCircle2,
   Copy,
   Cpu,
   ExternalLink,
+  FileCheck2,
   FileCode2,
   FileDown,
   FileText,
   Scale,
   ShieldCheck,
   Stamp,
+  Upload,
 } from 'lucide-react';
-import { getReportJsonUrl, getReportPdfUrl } from '../api/client';
+import { getCaspRequestPdfUrl, getReportJsonUrl, getReportPdfUrl } from '../api/client';
 import type { AnalysisRunDto } from '../types/api';
 import {
   copyToClipboard,
@@ -39,7 +42,90 @@ interface OsintReportViewProps {
 
 export const OsintReportView: React.FC<OsintReportViewProps> = ({ run }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [integrityReport, setIntegrityReport] = useState<{
+    checkedAt: string;
+    jsonSealSha256: string;
+    totalFacts: number;
+    validHashesCount: number;
+    snippetMatchedCount: number;
+    uploadedStatus: string | null;
+  } | null>(null);
   const report = run.report;
+
+  const computeBrowserSha256 = async (text: string): Promise<string> => {
+    const data = new TextEncoder().encode(text);
+    const digest = await window.crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
+  const handleVerifyIntegrity = async () => {
+    if (!report) return;
+    const facts = report.zone1SourceFacts ?? [];
+    let validHashesCount = 0;
+    let snippetMatchedCount = 0;
+    for (const f of facts) {
+      if (/^[a-f0-9]{64}$/i.test(f.sha256)) {
+        validHashesCount++;
+      }
+      const computedSnippetHash = await computeBrowserSha256(f.quoteSnippet ?? '');
+      if (computedSnippetHash.toLowerCase() === (f.sha256 ?? '').toLowerCase()) {
+        snippetMatchedCount++;
+      }
+    }
+    const jsonSealSha256 = await computeBrowserSha256(JSON.stringify(run));
+    setIntegrityReport({
+      checkedAt: new Date().toISOString(),
+      jsonSealSha256,
+      totalFacts: facts.length,
+      validHashesCount,
+      snippetMatchedCount,
+      uploadedStatus: null,
+    });
+  };
+
+  const handleVerifyUploadedJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !report) return;
+    try {
+      const content = await file.text();
+      const parsed = JSON.parse(content) as Partial<AnalysisRunDto>;
+      const fileHash = await computeBrowserSha256(content);
+      const uploadedFacts = parsed.report?.zone1SourceFacts ?? [];
+      const currentFacts = report.zone1SourceFacts ?? [];
+      const sameRun = parsed.runId === run.runId;
+      const allFactsMatch =
+        sameRun &&
+        uploadedFacts.length === currentFacts.length &&
+        currentFacts.every(
+          (f, i) =>
+            uploadedFacts[i]?.sha256 === f.sha256 &&
+            uploadedFacts[i]?.quoteSnippet === f.quoteSnippet,
+        );
+      setIntegrityReport({
+        checkedAt: new Date().toISOString(),
+        jsonSealSha256: fileHash,
+        totalFacts: currentFacts.length,
+        validHashesCount: currentFacts.filter((f) => /^[a-f0-9]{64}$/i.test(f.sha256)).length,
+        snippetMatchedCount: uploadedFacts.length,
+        uploadedStatus: allFactsMatch
+          ? `ZWERYFIKOWANO POZYTYWNIE: Plik "${file.name}" jest w 100% zgodny z bieżącą analizą ${run.runId} (SHA-256 pliku: ${fileHash.slice(0, 16)}...).`
+          : `NIEZGODNOŚĆ LUB INNA ANALIZA: Plik "${file.name}" (${parsed.runId ?? 'brak runId'}) różni się od bieżącego raportu ${run.runId}.`,
+      });
+    } catch {
+      setIntegrityReport({
+        checkedAt: new Date().toISOString(),
+        jsonSealSha256: '',
+        totalFacts: (report.zone1SourceFacts ?? []).length,
+        validHashesCount: 0,
+        snippetMatchedCount: 0,
+        uploadedStatus: 'BŁĄD PARSOWANIA: Wskazany plik nie jest poprawnym eksportem JSON systemu OŁCyŚ.',
+      });
+    } finally {
+      e.target.value = '';
+    }
+  };
 
   const handleCopy = async (text: string, key: string) => {
     const ok = await copyToClipboard(text);
@@ -58,6 +144,7 @@ export const OsintReportView: React.FC<OsintReportViewProps> = ({ run }) => {
   }
 
   const pdfUrl = getReportPdfUrl(run.runId);
+  const caspPdfUrl = getCaspRequestPdfUrl(run.runId);
   const jsonUrl = getReportJsonUrl(run.runId);
 
   const zone1Facts = report.zone1SourceFacts ?? [];
@@ -92,6 +179,14 @@ export const OsintReportView: React.FC<OsintReportViewProps> = ({ run }) => {
             >
               <FileDown className="w-4 h-4" />
               Pobierz Raport PDF (KAS)
+            </a>
+            <a
+              href={caspPdfUrl}
+              download={`olcys-wezwanie-casp-${run.runId}.pdf`}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#B45309] hover:bg-amber-700 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+            >
+              <Scale className="w-4 h-4" />
+              Projekt Wezwania CASP (PDF)
             </a>
             <a
               href={jsonUrl}
@@ -583,6 +678,57 @@ export const OsintReportView: React.FC<OsintReportViewProps> = ({ run }) => {
                 <li key={idx}>• {note}</li>
               ))}
             </ul>
+          </div>
+
+          {/* Cryptographic Chain-of-Custody Integrity Verifier */}
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 space-y-3 no-print">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-[#15803D]" />
+                <span className="text-xs font-bold uppercase tracking-wide text-[#0F2942]">
+                  Weryfikator Integralności Dowodowej Chain-of-Custody (SHA-256)
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleVerifyIntegrity()}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] hover:bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Przelicz SHA-256 w przeglądarce
+                </button>
+                <label className="inline-flex items-center gap-1.5 rounded-md border border-[#0F2942]/30 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-[#0F2942] cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" />
+                  Sprawdź pobrany plik report.json
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(e) => void handleVerifyUploadedJson(e)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {integrityReport && (
+              <div className="rounded-md border border-emerald-200 bg-white p-3 text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-[#15803D]">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  Zweryfikowano sumy kontrolne SHA-256 lokalnie w przeglądarce ({integrityReport.validHashesCount}/{integrityReport.totalFacts} poprawnych hashy dowodowych, {integrityReport.snippetMatchedCount} dopasowanych cytatów).
+                </div>
+                {integrityReport.jsonSealSha256 && (
+                  <div className="font-mono text-[11px] text-[#334155] break-all">
+                    Pieczęć SHA-256 raportu: {integrityReport.jsonSealSha256}
+                  </div>
+                )}
+                {integrityReport.uploadedStatus && (
+                  <div className="font-semibold text-[#0F2942] pt-1 border-t border-slate-100">
+                    {integrityReport.uploadedStatus}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>

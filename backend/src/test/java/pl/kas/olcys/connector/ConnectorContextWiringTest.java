@@ -33,7 +33,7 @@ class ConnectorContextWiringTest {
     void shouldRegisterAllWeb2AndWeb3ConnectorsInSpringContext() {
         assertThat(web2Connectors)
                 .extracting(Web2Connector::name)
-                .containsExactlyInAnyOrder("Synthetic", "GitHub", "Reddit", "WaybackArchive", "ENS");
+                .containsExactlyInAnyOrder("Synthetic", "GitHub", "Reddit", "WaybackArchive", "ENS", "Keybase");
         assertThat(web3Connectors)
                 .extracting(Web3Connector::network)
                 .containsExactlyInAnyOrder("ETH", "BTC", "TRON");

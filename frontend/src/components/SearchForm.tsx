@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Bell,
   CheckCircle2,
   Clock,
   FolderOpen,
@@ -15,6 +16,11 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
+import {
+  listMonitoringSchedules,
+  toggleSubjectMonitoring,
+  type MonitoringStatusDto,
+} from '../api/client';
 import type {
   AnalysisMode,
   CreateSubjectRequest,
@@ -47,10 +53,11 @@ interface SearchFormProps {
 }
 
 const DEFAULT_WEB2_SOURCES: Array<{ id: string; label: string; hint: string }> = [
-  { id: 'GitHub', label: 'GitHub', hint: 'Profile, bio, repozytoria, commity' },
+  { id: 'GitHub', label: 'GitHub', hint: 'Profile, bio, README, commity, wyszukiwanie po nazwisku' },
   { id: 'Reddit', label: 'Reddit', hint: 'Posty P2P, dyskusje, komentarze' },
   { id: 'WaybackArchive', label: 'WaybackArchive', hint: 'Migawki archiwalne Web Archive' },
   { id: 'ENS', label: 'ENS', hint: 'Ethereum Name Service (domeny .eth)' },
+  { id: 'Keybase', label: 'Keybase', hint: 'Dowody tożsamości i przypięte adresy krypto' },
   { id: 'Synthetic', label: 'Synthetic', hint: 'Zestawy walidacyjne KAS (offline)' },
 ];
 
@@ -101,11 +108,37 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     'Reddit',
     'WaybackArchive',
     'ENS',
+    'Keybase',
     'Synthetic',
   ]);
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>(['ETH', 'BTC', 'TRON']);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [activeSubtab, setActiveSubtab] = useState<'new' | 'cases'>('new');
+  const [monitoringMap, setMonitoringMap] = useState<Record<string, MonitoringStatusDto>>({});
+
+  useEffect(() => {
+    void listMonitoringSchedules()
+      .then((items) => {
+        const next: Record<string, MonitoringStatusDto> = {};
+        for (const item of items) {
+          next[item.subjectId] = item;
+        }
+        setMonitoringMap(next);
+      })
+      .catch(() => {
+        // Ignore if backend is starting up
+      });
+  }, [subjects.length]);
+
+  const handleToggleMonitoring = async (subjectId: string) => {
+    const currentlyEnabled = monitoringMap[subjectId]?.enabled ?? false;
+    try {
+      const updated = await toggleSubjectMonitoring(subjectId, !currentlyEnabled, 24);
+      setMonitoringMap((prev) => ({ ...prev, [subjectId]: updated }));
+    } catch {
+      // Ignore transient errors
+    }
+  };
 
   const web2SourceOptions = useMemo(() => {
     const baseIds = new Set(DEFAULT_WEB2_SOURCES.map((s) => s.id.toLowerCase()));
@@ -601,16 +634,34 @@ export const SearchForm: React.FC<SearchFormProps> = ({
                       </div>
                     )}
 
-                    {/* V2 Follow-up wallet rotation detection button */}
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => void handleTriggerV2(subject)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-[#B45309]/40 bg-amber-50 px-2.5 py-2 text-xs font-semibold text-[#B45309] hover:bg-amber-100 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      <GitCompareArrows className="w-3.5 h-3.5 shrink-0" />
-                      <span>Uruchom analizę kontrolną (v2 — wykryj podmianę portfela)</span>
-                    </button>
+                    {/* V2 Follow-up wallet rotation detection + Cyclic CRON toggle */}
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => void handleTriggerV2(subject)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-[#B45309]/40 bg-amber-50 px-2.5 py-2 text-xs font-semibold text-[#B45309] hover:bg-amber-100 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <GitCompareArrows className="w-3.5 h-3.5 shrink-0" />
+                        <span>Uruchom analizę kontrolną (v2 — wykryj podmianę portfela)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleToggleMonitoring(subject.id)}
+                        className={`w-full inline-flex items-center justify-between rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+                          monitoringMap[subject.id]?.enabled
+                            ? 'border-emerald-300 bg-emerald-50 text-[#15803D]'
+                            : 'border-slate-200 bg-[#F8FAFC] text-[#64748B] hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5 shrink-0" />
+                          Monitoring cykliczny 24h (CRON)
+                        </span>
+                        <span>{monitoringMap[subject.id]?.enabled ? 'AKTYWNY' : 'WYŁ.'}</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })

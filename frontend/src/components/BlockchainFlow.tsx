@@ -5,13 +5,16 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Banknote,
+  Calculator,
   Check,
   Coins,
   Copy,
   ExternalLink,
+  FileDown,
   Filter,
   TrendingUp,
 } from 'lucide-react';
+import { getCaspRequestPdfUrl } from '../api/client';
 import {
   Bar,
   BarChart,
@@ -86,6 +89,23 @@ const CustomChartTooltip: React.FC<CustomTooltipProps> = ({ active, label, paylo
 export const BlockchainFlow: React.FC<BlockchainFlowProps> = ({ run }) => {
   const [signalFilter, setSignalFilter] = useState<string>('ALL');
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [kupPercent, setKupPercent] = useState<number>(0);
+
+  const pit38Metrics = useMemo(() => {
+    const signals = run.cashOutSignals ?? [];
+    const disposalRevenuePln = signals
+      .filter((s) => s.signalType === 'CEX_OFFRAMP' || s.signalType === 'P2P_OR_GATEWAY')
+      .reduce((sum, s) => sum + (s.estimatedPln || 0), 0);
+    const effectiveKupPln = Math.round(disposalRevenuePln * (kupPercent / 100) * 100) / 100;
+    const taxBasePln = Math.max(0, Math.round((disposalRevenuePln - effectiveKupPln) * 100) / 100);
+    const estimatedTax19Pln = Math.round(taxBasePln * 0.19 * 100) / 100;
+    return {
+      disposalRevenuePln,
+      effectiveKupPln,
+      taxBasePln,
+      estimatedTax19Pln,
+    };
+  }, [run.cashOutSignals, kupPercent]);
 
   const allTimelineEvents = useMemo<TimelineEventDto[]>(() => {
     const reportFlow = run.report?.zone2Computations?.chronologicalFlow ?? [];
@@ -278,6 +298,79 @@ export const BlockchainFlow: React.FC<BlockchainFlowProps> = ({ run }) => {
           </div>
           <div className="text-[11px] text-[#64748B] mt-1">
             CEX Off-Ramp, P2P, bramki krypto-fiat, cykliczność
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive PIT-38 Tax Gap Calculator (19% art. 30b ustawy o PIT) */}
+      <div className="bg-white rounded-xl border-2 border-[#0F2942]/20 p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#0F2942] text-white flex items-center justify-center">
+              <Calculator className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#0F2942]">
+                Kalkulator Szacunkowej Luki Podatkowej PIT-38 (art. 30b ustawy o PIT — stawka 19%)
+              </h3>
+              <p className="text-xs text-[#64748B]">
+                Symulacja podstawy opodatkowania oraz należnego podatku od zidentyfikowanych wyjść Fiat Cash-Out (CEX Off-Ramp + P2P/Bramki).
+              </p>
+            </div>
+          </div>
+          <a
+            href={getCaspRequestPdfUrl(run.runId)}
+            download={`olcys-wezwanie-casp-${run.runId}.pdf`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0F2942] hover:bg-[#173a5e] px-3.5 py-2 text-xs font-bold text-white transition-colors"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            Pobierz Projekt Wezwania do CASP (PDF)
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-3">
+            <div className="text-[11px] font-semibold uppercase text-[#64748B]">
+              Przychód Cash-Out (PLN)
+            </div>
+            <div className="text-lg font-extrabold text-[#0F2942] tabular-nums mt-1">
+              {formatPln(pit38Metrics.disposalRevenuePln)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-3">
+            <div className="text-[11px] font-semibold uppercase text-[#64748B] flex items-center justify-between">
+              <span>Symulowane KUP</span>
+              <span className="font-bold text-[#0F2942]">{kupPercent}%</span>
+            </div>
+            <div className="text-lg font-extrabold text-[#334155] tabular-nums mt-1">
+              {formatPln(pit38Metrics.effectiveKupPln)}
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={80}
+              step={5}
+              value={kupPercent}
+              onChange={(e) => setKupPercent(Number(e.target.value))}
+              aria-label="Procent udokumentowanych kosztów uzyskania przychodu (KUP)"
+              className="w-full mt-1.5 accent-[#0F2942] cursor-pointer"
+            />
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-3">
+            <div className="text-[11px] font-semibold uppercase text-[#64748B]">
+              Podstawa opodatkowania
+            </div>
+            <div className="text-lg font-extrabold text-[#0F2942] tabular-nums mt-1">
+              {formatPln(pit38Metrics.taxBasePln)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-red-200 bg-red-50/70 p-3">
+            <div className="text-[11px] font-semibold uppercase text-[#B91C1C]">
+              Szacowany podatek PIT-38 (19%)
+            </div>
+            <div className="text-lg font-extrabold text-[#B91C1C] tabular-nums mt-1">
+              {formatPln(pit38Metrics.estimatedTax19Pln)}
+            </div>
           </div>
         </div>
       </div>

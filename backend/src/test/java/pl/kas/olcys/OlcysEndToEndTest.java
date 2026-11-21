@@ -59,7 +59,7 @@ class OlcysEndToEndTest {
         assertThat(health.externalDataTransfer()).isFalse();
         assertThat(health.aiProvider()).isEqualTo("local-rules");
         assertThat(health.web2Connectors()).containsExactlyInAnyOrder(
-                "ENS", "GitHub", "Reddit", "Synthetic", "WaybackArchive"
+                "ENS", "GitHub", "Keybase", "Reddit", "Synthetic", "WaybackArchive"
         );
         assertThat(health.web3Connectors()).containsExactlyInAnyOrder("BTC", "ETH", "TRON");
 
@@ -123,15 +123,16 @@ class OlcysEndToEndTest {
         assertThat(binance14.rejectionCategory()).isEqualTo("CEX");
         assertThat(binance14.interactionRecorded()).isTrue();
 
-        // Verify Cash-Out signals & 3 report zones
+        // Verify Cash-Out signals & 3 report zones (including 19% PIT-38 tax calculator & AML_STRUCTURING_OR_2HOP)
         assertThat(runV1.cashOutSignals())
                 .extracting(CashOutSignalDto::signalType)
-                .contains("CEX_OFFRAMP", "STABLECOIN_CONVERSION", "P2P_OR_GATEWAY");
+                .contains("CEX_OFFRAMP", "STABLECOIN_CONVERSION", "P2P_OR_GATEWAY", "AML_STRUCTURING_OR_2HOP");
         assertThat(runV1.report()).isNotNull();
         assertThat(runV1.report().zone1SourceFacts()).hasSize(4);
         assertThat(runV1.report().zone2Computations().confirmedWallets()).hasSize(2);
         assertThat(runV1.report().zone2Computations().rejectedFalsePositives()).hasSize(2);
-        assertThat(runV1.report().zone3VerificationConclusions().pit38RiskIndicatorsPl()).isNotEmpty();
+        assertThat(runV1.report().zone3VerificationConclusions().pit38RiskIndicatorsPl())
+                .anySatisfy(line -> assertThat(line).contains("19%"));
 
         // Verify GET /api/runs/{runId} deserialization from DB
         mockMvc.perform(get("/api/runs/" + runV1.runId()))
@@ -213,6 +214,28 @@ class OlcysEndToEndTest {
             assertThat(extractedText).contains("SEKCJA 3: WNIOSKI WYMAGAJĄCE DALSZEJ WERYFIKACJI");
             assertThat(extractedText).contains("OŁCyŚ");
         }
+
+        // Export CASP demand letter draft PDF (art. 182 Ordynacji podatkowej)
+        MvcResult caspPdfRes = mockMvc.perform(get("/api/runs/" + runV1.runId() + "/casp-request.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn();
+        byte[] caspPdfBytes = caspPdfRes.getResponse().getContentAsByteArray();
+        assertThat(caspPdfBytes.length).isGreaterThan(1500);
+        try (PDDocument caspDoc = Loader.loadPDF(caspPdfBytes)) {
+            String caspText = new PDFTextStripper().getText(caspDoc);
+            assertThat(caspText).contains("PROJEKT WEZWANIA");
+            assertThat(caspText).contains("art. 182 Ordynacji podatkowej");
+        }
+
+        // Configure cyclic monitoring (24h CRON)
+        mockMvc.perform(post("/api/subjects/" + runV1.subjectId() + "/monitoring")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":true,\"intervalHours\":24}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/monitoring"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(runV1.subjectId())));
 
         MvcResult jsonExportRes = mockMvc.perform(get("/api/runs/" + runV1.runId() + "/report.json"))
                 .andExpect(status().isOk())

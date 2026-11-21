@@ -123,6 +123,37 @@ export function getReportPdfUrl(runId: string): string {
   return `/api/runs/${encodeURIComponent(runId)}/report.pdf`;
 }
 
+export function getCaspRequestPdfUrl(runId: string): string {
+  return `/api/runs/${encodeURIComponent(runId)}/casp-request.pdf`;
+}
+
 export function getReportJsonUrl(runId: string): string {
   return `/api/runs/${encodeURIComponent(runId)}/report.json`;
+}
+
+export interface MonitoringStatusDto {
+  subjectId: string;
+  subjectDisplayName: string;
+  enabled: boolean;
+  intervalHours: number;
+  updatedAt: string;
+  lastHeartbeatAt: string | null;
+}
+
+export function listMonitoringSchedules(): Promise<MonitoringStatusDto[]> {
+  return requestJson<MonitoringStatusDto[]>('/api/monitoring');
+}
+
+export function toggleSubjectMonitoring(
+  subjectId: string,
+  enabled: boolean,
+  intervalHours = 24,
+): Promise<MonitoringStatusDto> {
+  return requestJson<MonitoringStatusDto>(
+    `/api/subjects/${encodeURIComponent(subjectId)}/monitoring`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ enabled, intervalHours }),
+    },
+  );
 }

@@ -65,6 +65,25 @@ public class AnalysisController {
                 .body(pdfBytes);
     }
 
+    @GetMapping(value = "/runs/{runId}/casp-request.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Generuje projekt wezwania organu KAS do podmiotu CASP / giełdy (art. 182 Ordynacji podatkowej)")
+    public ResponseEntity<byte[]> downloadCaspRequestPdf(@PathVariable String runId) {
+        AnalysisRunDto run = analysisOrchestrator.getRun(runId);
+        byte[] pdfBytes = pdfReportGenerator.generateCaspRequestPdf(run);
+        String safeId = sanitizeFilenameToken(run.runId());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename("olcys-wezwanie-casp-" + safeId + ".pdf", StandardCharsets.UTF_8)
+                .build());
+        headers.setContentLength(pdfBytes.length);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
     @GetMapping(value = "/runs/{runId}/report.json", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Eksportuje kompletny materiał dowodowy i raport 3-strefowy jako plik JSON")
     public ResponseEntity<AnalysisRunDto> downloadJsonReport(@PathVariable String runId) {

@@ -154,6 +154,19 @@ public class ReportBuilder {
             return indicators;
         }
 
+        double estimatedDisposalRevenuePln = signals.stream()
+                .filter(s -> "CEX_OFFRAMP".equals(s.signalType()) || "P2P_OR_GATEWAY".equals(s.signalType()))
+                .mapToDouble(CashOutSignalDto::estimatedPln)
+                .sum();
+        if (estimatedDisposalRevenuePln > 0) {
+            double estimatedTax19Pct = round2(estimatedDisposalRevenuePln * 0.19);
+            indicators.add(String.format(
+                    "Kalkulator luki PIT-38 (art. 30b ust. 1 ustawy o PIT, stawka 19%%): szacowana wartość zidentyfikowanych wyjść Fiat Cash-Out wynosi %s, co przy braku udokumentowanych kosztów uzyskania przychodu (KUP = 0 PLN) implikuje szacowany należny podatek do weryfikacji w wysokości %s.",
+                    formatPln(estimatedDisposalRevenuePln),
+                    formatPln(estimatedTax19Pct)
+            ));
+        }
+
         if (signalTypes.contains("CEX_OFFRAMP")) {
             double cexSum = signals.stream()
                     .filter(s -> "CEX_OFFRAMP".equals(s.signalType()))

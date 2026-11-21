@@ -65,6 +65,7 @@ public class GithubConnector implements Web2Connector {
             }
             if (fetchedLogins.add(handle.toLowerCase(Locale.ROOT))) {
                 fetchUserProfile(handle, handle).ifPresent(evidences::add);
+                fetchProfileReadme(handle, handle).ifPresent(evidences::add);
                 fetchPublicEvents(handle, handle).ifPresent(evidences::add);
             }
         }
@@ -86,6 +87,7 @@ public class GithubConnector implements Web2Connector {
             searchUserLogin(queryValue).ifPresent(login -> {
                 if (fetchedLogins.add(login.toLowerCase(Locale.ROOT))) {
                     fetchUserProfile(login, queryValue).ifPresent(evidences::add);
+                    fetchProfileReadme(login, queryValue).ifPresent(evidences::add);
                     fetchPublicEvents(login, queryValue).ifPresent(evidences::add);
                 }
             });
@@ -173,6 +175,28 @@ public class GithubConnector implements Web2Connector {
             log.debug("Failed to parse GitHub profile JSON for {}: {}", handle, ex.getMessage());
             return Optional.empty();
         }
+    }
+
+    private Optional<RawEvidence> fetchProfileReadme(String handle, String matchedIdentifier) {
+        String encoded = Web2ConnectorSupport.urlEncode(handle);
+        String readmeApiUrl = "https://api.github.com/repos/" + encoded + "/" + encoded + "/readme";
+        Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
+                restClient, readmeApiUrl, log, "application/vnd.github.raw+json");
+        if (bodyOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        String rawReadme = bodyOpt.get();
+        String snippet = Web2ConnectorSupport.truncateSnippet("GitHub profilowy README.md (@" + handle + "): " + rawReadme);
+        return Optional.of(new RawEvidence(
+                name(),
+                "CODE_PROFILE",
+                "https://github.com/" + handle + "/" + handle + "#readme",
+                Instant.now(),
+                Web2ConnectorSupport.sha256(rawReadme),
+                snippet,
+                matchedIdentifier,
+                "OWN_PROFILE_VERIFIED"
+        ));
     }
 
     private Optional<RawEvidence> fetchPublicEvents(String handle, String matchedIdentifier) {
