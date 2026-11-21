@@ -194,18 +194,12 @@ olcys/
 ├── docker-compose.yml                # postgres:16-alpine, backend, frontend (+ profil ai: ollama)
 ├── README.md                         # Dokumentacja KAS, audyt licencji i instrukcja użycia
 ├── docs/
-│   ├── FINAL_PITCH_SCRIPT.md                         # Scenariusz wystąpienia live Etap 2 (2:50 min + Q&A)
-│   ├── OLCyS_Prezentacja_KAS_10_Slajdow.pdf          # Prezentacja PDF (10 slajdów)
-│   ├── PREZENTACJA_10_SLAJDOW_I_SCENARIUSZ_WIDEO.md  # Konspekt 10 slajdów PDF + scenariusz 180s wideo
-│   ├── VOICEOVER_SCRIPT.txt                          # Tekst narracji lektora z timestampami (2:45 min)
-│   ├── demo_subtitles.srt                            # Napisy PL (UTF-8) zsynchronizowane z nagraniem
-│   ├── olcys_demo.mp4                                # Film demonstracyjny (2:45 min Full HD 1920×1080 30fps H.264)
-│   ├── prezentacja_etap1.pdf                         # Samodzielna prezentacja Etap 1 (5 slajdów PDF 16:9)
-│   ├── prezentacja_etap2_tlo.pdf                     # Minimalistyczne slajdy tła na finał live (3 slajdy PDF)
-│   ├── screenshots/                                  # 5 zrzutów ekranu UI (01–05)
-│   └── slides/                                       # Źródła HTML/CSS prezentacji PDF (16:9)
+│   ├── FINAL_PITCH_SCRIPT.md         # Scenariusz wystąpienia live Etap 2 (2:50 min + Q&A)
+│   ├── olcys_demo.mp4                # Film demonstracyjny (2:45 min Full HD 1920×1080 30fps H.264)
+│   ├── prezentacja_etap1.pdf         # Samodzielna prezentacja Etap 1 (5 slajdów PDF 16:9)
+│   ├── prezentacja_etap2_tlo.pdf     # Minimalistyczne slajdy tła na finał live (3 slajdy PDF)
+│   └── screenshots/                  # 5 zrzutów ekranu UI (01–05)
 ├── scripts/
-│   ├── record_demo.mjs               # Reproducible Playwright + FFmpeg recorder (1920×1080)
 │   └── run-demo-check.sh             # Skrypt walidacji E2E (curl + jq) dla API i raportu PDF
 ├── backend/
 │   ├── pom.xml                       # Maven: Spring Boot 3.4, Java 21, PDFBox 3.0.3, BouncyCastle 1.79, Springdoc
@@ -709,13 +703,11 @@ Po uruchomieniu aplikacji (`http://localhost:5173`) i wykonaniu scenariuszy wali
 | **Scenariusze walidacyjne z danymi zanonimizowanymi/syntetycznymi (Sekcja 3)** | 3 scenariusze w `scenarios.json` (`scenariusz-1-janek`, `scenariusz-2-reverse-osint`, `scenariusz-3-szum-fp`), testy `OlcysEndToEndTest` i `run-demo-check.sh` |
 | **3-strefowy raport OSINT czytelny dla osób nietechnicznych (Sekcja 6 & 7)** | `ReportBuilder.java` + `PdfReportGenerator.java` (Apache PDFBox 3.0.3 + `DejaVuSans`) + `OsintReportView.tsx` + `/report.pdf` + `/report.json` |
 | **Open Source (zero GPL/AGPL), monorepo, Java + React + PostgreSQL, wymienny lokalny AI (Sekcja 5 & KROK 4)** | Monorepo `backend/` (Java 21 + Spring Boot 3.4) + `frontend/` (React 19 + TS), `AiClientRouter` + `OpenAiCompatibleAiClient` (`OLCYS_AI_ALLOW_EXTERNAL=false`) |
-| **Wymagania formalne: opis/parametry, prezentacje PDF, film demo ≤ 3 min (Sekcja 4)** | `README.md`, [prezentacja_etap1.pdf](docs/prezentacja_etap1.pdf), [prezentacja_etap2_tlo.pdf](docs/prezentacja_etap2_tlo.pdf), [OLCyS_Prezentacja_KAS_10_Slajdow.pdf](docs/OLCyS_Prezentacja_KAS_10_Slajdow.pdf), [olcys_demo.mp4](docs/olcys_demo.mp4) (`2:45 min`) |
+| **Wymagania formalne: opis/parametry, prezentacje PDF, film demo ≤ 3 min (Sekcja 4)** | `README.md`, [prezentacja_etap1.pdf](docs/prezentacja_etap1.pdf), [prezentacja_etap2_tlo.pdf](docs/prezentacja_etap2_tlo.pdf), [FINAL_PITCH_SCRIPT.md](docs/FINAL_PITCH_SCRIPT.md), [olcys_demo.mp4](docs/olcys_demo.mp4) (`2:45 min`) |
 
 ### Materiały do pobrania i uruchomienia
 
 - **Prezentacja Etapu 1 (5 slajdów PDF 16:9):** [docs/prezentacja_etap1.pdf](docs/prezentacja_etap1.pdf)
 - **Finał na żywo Etapu 2 — skrypt 2:50 + Q&A oraz 3 slajdy tła:** [docs/FINAL_PITCH_SCRIPT.md](docs/FINAL_PITCH_SCRIPT.md) & [docs/prezentacja_etap2_tlo.pdf](docs/prezentacja_etap2_tlo.pdf)
-- **Film demonstracyjny z działania aplikacji (2:45 min, Full HD 1920×1080 30 fps H.264 z napisami PL):** [docs/olcys_demo.mp4](docs/olcys_demo.mp4) ([napisy .srt](docs/demo_subtitles.srt), [tekst lektora](docs/VOICEOVER_SCRIPT.txt), [skrypt nagrywający](scripts/record_demo.mjs))
-- **Rozszerzona 10-slajdowa prezentacja PDF (KAS / HackNation 2026):** [docs/OLCyS_Prezentacja_KAS_10_Slajdow.pdf](docs/OLCyS_Prezentacja_KAS_10_Slajdow.pdf)
-- **Konspekt 10 slajdów i 3-minutowy scenariusz filmu demo (180 s):** [docs/PREZENTACJA_10_SLAJDOW_I_SCENARIUSZ_WIDEO.md](docs/PREZENTACJA_10_SLAJDOW_I_SCENARIUSZ_WIDEO.md)
+- **Film demonstracyjny z działania aplikacji (2:45 min, Full HD 1920×1080 30 fps H.264 z wpalonymi napisami PL):** [docs/olcys_demo.mp4](docs/olcys_demo.mp4)
 - **Automatyczny skrypt weryfikacji E2E:** [scripts/run-demo-check.sh](scripts/run-demo-check.sh)
