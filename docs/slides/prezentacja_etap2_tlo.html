@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>OŁCyŚ — Prezentacja Tło Etap 2 (KAS • HackNation 2026)</title>
+  <style>
+    @page {
+      size: 1280px 720px;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #F8FAFC;
+      color: #1E293B;
+      font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    code, .mono {
+      font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+    }
+
+    .arch-node-desc .mono,
+    .pillar .mono,
+    .fw-layer-body .mono,
+    .synergy-text .mono {
+      font-weight: 700;
+      color: #0F2942;
+    }
+
+    .slide {
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+      box-sizing: border-box;
+      page-break-after: always;
+      background: #F8FAFC;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .slide:last-child {
+      page-break-after: auto;
+    }
+
+    /* Top Institutional Header Bar */
+    .topbar {
+      height: 52px;
+      background: #0F2942;
+      color: #FFFFFF;
+      padding: 0 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid #15803D;
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .topbar-badge {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #E2E8F0;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #CBD5E1;
+    }
+
+    .pill-green-top {
+      background: #15803D;
+      color: #FFFFFF;
+      padding: 4px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Main Content Container */
+    .content {
+      flex: 1;
+      padding: 24px 44px 16px 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      overflow: hidden;
+    }
+
+    /* Bottom Footer Bar */
+    .footer {
+      height: 36px;
+      background: #FFFFFF;
+      border-top: 1px solid #CBD5E1;
+      padding: 0 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748B;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .footer strong {
+      color: #0F2942;
+    }
+
+    /* Typography */
+    .hero-block {
+      border-left: 6px solid #0F2942;
+      padding-left: 18px;
+    }
+
+    .hero-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #B45309;
+      margin-bottom: 4px;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.15;
+      font-weight: 700;
+      color: #0F2942;
+    }
+
+    .hero-sub {
+      margin: 6px 0 0 0;
+      font-size: 16px;
+      line-height: 1.35;
+      color: #334155;
+    }
+
+    .section-title {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #0F2942;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Slide 1 Layout */
+    .s1-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 24px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .card {
+      background: #FFFFFF;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2px;
+    }
+
+    .param-table tr {
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .param-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .param-table td {
+      padding: 13px 8px;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.42;
+    }
+
+    .s1-bottom-pills {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #E2E8F0;
+    }
+
+    .s1-mini-stat {
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      padding: 9px 11px;
+    }
+
+    .s1-mini-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #64748B;
+      margin-bottom: 2px;
+    }
+
+    .s1-mini-val {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0F2942;
+    }
+
+    .param-key {
+      width: 34%;
+      font-weight: 700;
+      color: #0F2942;
+      font-size: 14px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      color: #0F2942;
+      border-radius: 5px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tag-accent {
+      background: #ECFDF5;
+      border-color: #86EFAC;
+      color: #15803D;
+    }
+
+    .tag-amber {
+      background: #FFFBEB;
+      border-color: #FCD34D;
+      color: #B45309;
+    }
+
+    .demo-card {
+      background: #0F2942;
+      color: #FFFFFF;
+      border-radius: 12px;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 2px solid #091B2C;
+    }
+
+    .demo-card-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #93C5FD;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .demo-subject {
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin: 0 0 12px 0;
+    }
+
+    .demo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .demo-item {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .demo-item-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #CBD5E1;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .demo-item-val {
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFFFFF;
+      line-height: 1.35;
+    }
+
+    .demo-cta {
+      background: #15803D;
+      color: #FFFFFF;
+      border-radius: 8px;
+      padding: 11px 12px;
+      font-size: 13.5px;
+      font-weight: 700;
+      text-align: center;
+      margin-top: 10px;
+      border: 1px solid #4ADE80;
+      white-space: nowrap;
+    }
+
+    /* Slide 2 Layout */
+    .s2-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 22px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .score-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 12px;
+      align-items: center;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    .score-pill {
+      text-align: center;
+      padding: 6px 0;
+      border-radius: 7px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .score-desc-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F2942;
+      line-height: 1.25;
+    }
+
+    .score-desc-sub {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.25;
+    }
+
+    .synergy-box {
+      background: #ECFDF5;
+      border: 2px solid #15803D;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+
+    .synergy-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #15803D;
+      margin-bottom: 4px;
+    }
+
+    .synergy-text {
+      font-size: 13px;
+      color: #1E293B;
+      line-height: 1.38;
+    }
+
+    .fw-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .fw-layer {
+      background: #FFFFFF;
+      border: 1.5px solid #CBD5E1;
+      border-left: 6px solid #B91C1C;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .fw-layer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .fw-layer-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F2942;
+    }
+
+    .fw-badge-red {
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      color: #B91C1C;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .fw-layer-body {
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.36;
+    }
+
+    .fw-arrow {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #64748B;
+      line-height: 1;
+      margin: -2px 0;
+    }
+
+    .interaction-box {
+      background: #FFFBEB;
+      border: 2px solid #B45309;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 8px;
+    }
+
+    .interaction-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #B45309;
+      margin-bottom: 4px;
+    }
+
+    /* Slide 3 Layout */
+    .arch-flow {
+      display: grid;
+      grid-template-columns: 1fr 26px 1fr 26px 1fr 26px 1fr;
+      align-items: stretch;
+      gap: 4px;
+    }
+
+    .arch-node {
+      background: #FFFFFF;
+      border: 2px solid #0F2942;
+      border-radius: 10px;
+      padding: 14px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .arch-node-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #B45309;
+      margin-bottom: 3px;
+    }
+
+    .arch-node-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0F2942;
+      margin-bottom: 6px;
+    }
+
+    .arch-node-desc {
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.36;
+    }
+
+    .arch-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #0F2942;
+    }
+
+    .s3-pillars {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      flex: 1;
+    }
+
+    .pillar {
+      background: #FFFFFF;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 10px;
+      padding: 18px 18px 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .pillar-green { box-shadow: inset 0 5px 0 #15803D; }
+    .pillar-navy  { box-shadow: inset 0 5px 0 #0F2942; }
+    .pillar-amber { box-shadow: inset 0 5px 0 #B45309; }
+
+    .pillar-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0F2942;
+    }
+
+    .pillar ul {
+      margin: 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13.5px;
+      line-height: 1.38;
+      color: #1E293B;
+    }
+
+    .closing-banner {
+      background: #0F2942;
+      color: #FFFFFF;
+      border-radius: 10px;
+      padding: 13px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .closing-text {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .repo-pill {
+      background: #15803D;
+      border: 1px solid #4ADE80;
+      color: #FFFFFF;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== SLAJD 1: OTWARCIE PRZED LIVE DEMO ==================== -->
+  <section class="slide">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span>OŁCyŚ</span>
+        <span class="topbar-badge">Krajowa Administracja Skarbowa • HackNation 2026</span>
+      </div>
+      <div class="topbar-right">
+        <span class="pill-green-top">100% On-Premise • Zero transferu zewnętrznego</span>
+        <span>Etap 2 — Live Pitch</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="hero-block">
+        <div class="hero-kicker">Wyzwanie OSINT &amp; Blockchain dla weryfikacji podatku PIT-38</div>
+        <h1 class="hero-title">OŁCyŚ — Osintowy Łapacz Cyfrowych Śladów</h1>
+        <p class="hero-sub">
+          Korelacja publicznych śladów Web2 z analizą przepływów Web3 i ochroną przed błędnym przypisaniem (Firewall FP).
+        </p>
+      </div>
+
+      <div class="s1-grid">
+        <div class="card">
+          <div>
+            <h2 class="section-title">
+              <span class="dot" style="background:#0F2942;"></span>
+              Parametry wyszukiwania i otwarte źródła
+            </h2>
+            <table class="param-table">
+              <tr>
+                <td class="param-key">6 identyfikatorów wejściowych</td>
+                <td>
+                  <div class="tag-row">
+                    <span class="tag mono">NICK</span>
+                    <span class="tag mono">FULL_NAME</span>
+                    <span class="tag mono">EMAIL</span>
+                    <span class="tag mono">TELEGRAM_ID</span>
+                    <span class="tag mono">SOCIAL_LOGIN</span>
+                    <span class="tag tag-amber mono">CRYPTO_ADDRESS (Reverse)</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="param-key">6 konektorów Web2<br /><span style="font-size:11px;font-weight:400;color:#64748B;">(Java 21 Virtual Threads)</span></td>
+                <td>
+                  <div class="tag-row">
+                    <span class="tag">GitHub</span>
+                    <span class="tag">Reddit</span>
+                    <span class="tag">WaybackArchive</span>
+                    <span class="tag">ENS</span>
+                    <span class="tag">Keybase</span>
+                    <span class="tag tag-accent">Synthetic</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="param-key">3 sieci Web3 + walidacja</td>
+                <td>
+                  <div class="tag-row">
+                    <span class="tag">ETH (EIP-55 Keccak-256)</span>
+                    <span class="tag">BTC (Bech32 / Base58Check)</span>
+                    <span class="tag">TRON (Base58Check)</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="param-key">Interpretacja wyniku</td>
+                <td style="color:#1E293B;">
+                  <strong>Confidence Score (0–100%)</strong> z rozbiciem reguł + <strong>3-warstwowy Firewall FP</strong> + <strong>Raport 3-strefowy</strong> (Chain-of-Custody SHA-256).
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="s1-bottom-pills">
+            <div class="s1-mini-stat">
+              <div class="s1-mini-label">Czas analizy (SYNTHETIC)</div>
+              <div class="s1-mini-val">&lt; 1 s offline (zero chmury)</div>
+            </div>
+            <div class="s1-mini-stat">
+              <div class="s1-mini-label">Chain-of-Custody</div>
+              <div class="s1-mini-val">URL + UTC + SHA-256</div>
+            </div>
+            <div class="s1-mini-stat">
+              <div class="s1-mini-label">Eksport dowodowy KAS</div>
+              <div class="s1-mini-val">PDF (PDFBox) + JSON</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="demo-card">
+          <div>
+            <div class="demo-card-title">Założenia scenariusza demonstracyjnego</div>
+            <h2 class="demo-subject">Scenariusz 1: Jan Kowalski (@krypto_janek)</h2>
+
+            <div class="demo-list">
+              <div class="demo-item">
+                <div class="demo-item-label">Identyfikatory i sieci</div>
+                <div class="demo-item-val mono" style="font-size:12.5px;">
+                  NICK: krypto_janek • FULL_NAME: Jan Kowalski<br />
+                  EMAIL: janek.dev@example.pl • Sieci: ETH + BTC
+                </div>
+              </div>
+
+              <div class="demo-item">
+                <div class="demo-item-label">Tryb i bezpieczeństwo danych</div>
+                <div class="demo-item-val">
+                  Tryb <span class="mono">SYNTHETIC</span> (Scenariusz Walidacyjny)<br />
+                  <span style="font-weight:400;color:#E2E8F0;font-size:13px;">Pasywny OSINT, zero danych testowych do chmury</span>
+                </div>
+              </div>
+
+              <div class="demo-item">
+                <div class="demo-item-label">Zakres analizy na żywo</div>
+                <div class="demo-item-val" style="font-size:13px;">
+                  4 źródła Web2 → ETH 100% &amp; BTC 70% → 2 odrzucone FP (0%) → 13 sygnałów Cash-Out &amp; Diff v1→v2
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="demo-cta">
+            Przejście do aplikacji na żywo (Live Demo) →
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span><strong>OŁCyŚ</strong> • Pasywny OSINT bez obchodzenia zabezpieczeń</span>
+      <span>Slajd 1 / 3 — Otwarcie przed prezentacją na żywo</span>
+    </footer>
+  </section>
+
+  <!-- ==================== SLAJD 2: ŚCIĄGAWKA Q&A — SCORING & FIREWALL FP ==================== -->
+  <section class="slide">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span>OŁCyŚ</span>
+        <span class="topbar-badge">Ściągawka Q&amp;A • Metodyka Analityczna KAS</span>
+      </div>
+      <div class="topbar-right">
+        <span>Zero czarnej skrzynki AI • 100% Determinizm</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="hero-block">
+        <div class="hero-kicker">Wyjaśnialność oceny i eliminacja błędnych przypisań</div>
+        <h1 class="hero-title" style="font-size:30px;">Wskaźnik Pewności i 3-warstwowy Firewall False Positives</h1>
+      </div>
+
+      <div class="s2-grid">
+        <!-- Left: Confidence Score -->
+        <div class="card">
+          <div>
+            <h2 class="section-title">
+              <span class="dot" style="background:#15803D;"></span>
+              Deterministyczny Wskaźnik Pewności (0–100%)
+            </h2>
+
+            <div class="score-list">
+              <div class="score-row">
+                <div class="score-pill" style="background:#15803D;">85%</div>
+                <div>
+                  <div class="score-desc-title">Oficjalny profil autorski <span style="color:#64748B;font-weight:400;">[80–100%]</span></div>
+                  <div class="score-desc-sub">Autorski profil GitHub, ENS lub własna strona podmiotu</div>
+                </div>
+              </div>
+
+              <div class="score-row">
+                <div class="score-pill" style="background:#0F2942;">70%</div>
+                <div>
+                  <div class="score-desc-title">Kontekst transakcyjny P2P / B2B <span style="color:#64748B;font-weight:400;">[60–79%]</span></div>
+                  <div class="score-desc-sub">Ogłoszenie kupna/sprzedaży (KantorP2P.pl), stopka B2B (Wayback)</div>
+                </div>
+              </div>
+
+              <div class="score-row">
+                <div class="score-pill" style="background:#B45309;">50%</div>
+                <div>
+                  <div class="score-desc-title">Dyskusja na forum / wejście bezpośrednie <span style="color:#64748B;font-weight:400;">[40–59%]</span></div>
+                  <div class="score-desc-sub">Wzmianka w wątku tematycznym lub adres podany w Reverse OSINT</div>
+                </div>
+              </div>
+
+              <div class="score-row">
+                <div class="score-pill" style="background:#64748B;">20%</div>
+                <div>
+                  <div class="score-desc-title">Szum informacyjny / giveaway <span style="color:#64748B;font-weight:400;">[10–39%]</span></div>
+                  <div class="score-desc-sub">Masowe komentarze airdropowe i konkursowe (brak synergii)</div>
+                </div>
+              </div>
+
+              <div class="score-row" style="border-color:#FCA5A5;background:#FEF2F2;">
+                <div class="score-pill" style="background:#B91C1C;">0%</div>
+                <div>
+                  <div class="score-desc-title" style="color:#B91C1C;">Wykluczenie False Positive (twardy sufit)</div>
+                  <div class="score-desc-sub">Smart kontrakty, giełdy CEX, miksery, zbiórki — bez premii synergii</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="synergy-box">
+            <div class="synergy-title">Reguła Synergii (+15 pp, max 100%) i Deduplikacja</div>
+            <div class="synergy-text">
+              Brak sumowania powtórzeń w jednej domenie (np. 10 postów na tym samym forum = 1 źródło).
+              Premia <strong>+15 pkt</strong> działa wyłącznie dla <strong>&ge; 2 niezależnych platform Web2</strong>:<br />
+              <span class="mono" style="font-size:12.5px;font-weight:700;color:#0F2942;">GitHub (85 pkt) + KantorP2P.pl (+15 pkt) = 100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: 3-Layer Firewall FP -->
+        <div class="card">
+          <div>
+            <h2 class="section-title">
+              <span class="dot" style="background:#B91C1C;"></span>
+              3-warstwowy Firewall False Positives
+            </h2>
+
+            <div class="fw-stack">
+              <div class="fw-layer">
+                <div class="fw-layer-head">
+                  <span class="fw-layer-title">Warstwa 1: Detekcja Smart Kontraktów (<span class="mono">eth_getCode</span>)</span>
+                  <span class="fw-badge-red">0% • FP</span>
+                </div>
+                <div class="fw-layer-body">
+                  Odrzuca adresy z niepustym kodem (<span class="mono">bytecode != 0x</span>, np. <em>Uniswap V3: SwapRouter</em> <span class="mono">0xE592...1564</span>).
+                  <strong>Wyjątek <span class="mono">EIP-7702</span>:</strong> poprawnie przepuszcza delegowane konta EOA (<span class="mono">0xef0100...</span>).
+                </div>
+              </div>
+
+              <div class="fw-arrow">↓</div>
+
+              <div class="fw-layer">
+                <div class="fw-layer-head">
+                  <span class="fw-layer-title">Warstwa 2: Rejestr Address Tags (83 tagi) + Eksplorator</span>
+                  <span class="fw-badge-red">0% • FP</span>
+                </div>
+                <div class="fw-layer-body">
+                  Blokuje adresy instytucjonalne: <span class="mono">CEX</span> (<em>Binance 14</em> <span class="mono">0x28C6...1d60</span>), <span class="mono">CASP_P2P</span>, <span class="mono">DEX_ROUTER</span>, <span class="mono">STABLECOIN</span>, <span class="mono">MIXER</span> (Tornado Cash), <span class="mono">CHARITY</span> i <span class="mono">BURN</span>.
+                </div>
+              </div>
+
+              <div class="fw-arrow">↓</div>
+
+              <div class="fw-layer">
+                <div class="fw-layer-head">
+                  <span class="fw-layer-title">Warstwa 3: Heurystyka Wolumenowa (<span class="mono">txCount &gt; 10 000</span>)</span>
+                  <span class="fw-badge-red">0% • FP</span>
+                </div>
+                <div class="fw-layer-body">
+                  Wyklucza nieoznakowane konta powiernicze i zbiorcze o skali giełdowej (<span class="mono">SUSPECTED_CUSTODIAL</span>).
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="interaction-box">
+            <div class="interaction-title">Zachowanie śladu dowodowego: <span class="mono">interactionRecorded = true</span></div>
+            <div style="font-size:13px;color:#1E293B;line-height:1.38;">
+              Wykluczenie giełdy z majątku podatnika (<strong>0%</strong>) nie usuwa śladu operacyjnego — bezpośrednia transakcja z portfela podatnika na CEX pozostaje sygnałem <strong>Fiat Cash-Out</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span><strong>OŁCyŚ</strong> • Deterministyczny scoring KAS + 3-warstwowy Firewall FP</span>
+      <span>Slajd 2 / 3 — Ściągawka pod sesję Q&amp;A</span>
+    </footer>
+  </section>
+
+  <!-- ==================== SLAJD 3: ZAMKNIĘCIE Q&A — ARCHITEKTURA ON-PREMISE ==================== -->
+  <section class="slide">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span>OŁCyŚ</span>
+        <span class="topbar-badge">Ściągawka Q&amp;A • Architektura On-Premise KAS</span>
+      </div>
+      <div class="topbar-right">
+        <span class="pill-green-top">0 bibliotek GPL / AGPL</span>
+        <span>Gotowość wdrożeniowa</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="hero-block">
+        <div class="hero-kicker">Bezpieczeństwo danych, skalowalność i pełna zgodność licencyjna</div>
+        <h1 class="hero-title" style="font-size:30px;">Architektura On-Premise w infrastrukturze KAS</h1>
+      </div>
+
+      <!-- Architecture Pipeline Diagram -->
+      <div class="arch-flow">
+        <div class="arch-node">
+          <div>
+            <div class="arch-node-kicker">Warstwa Prezentacji</div>
+            <div class="arch-node-title">React 19 + TypeScript</div>
+            <div class="arch-node-desc">
+              Graf <span class="mono">@xyflow/react</span>, wykresy <span class="mono">Recharts</span>, kalkulator 19% PIT-38, weryfikator <span class="mono">SHA-256</span> w przeglądarce.
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">→</div>
+
+        <div class="arch-node">
+          <div>
+            <div class="arch-node-kicker">Rdzeń Analityczny</div>
+            <div class="arch-node-title">Java 21 + Spring Boot 3.4</div>
+            <div class="arch-node-desc">
+              Równoległy OSINT na <strong>Virtual Threads</strong>, Firewall FP, Cash-Out i raport PL w <span class="mono">Apache PDFBox 3.0.3</span>.
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">→</div>
+
+        <div class="arch-node">
+          <div>
+            <div class="arch-node-kicker">Trwałość i Audyt</div>
+            <div class="arch-node-title">PostgreSQL 16 + Flyway</div>
+            <div class="arch-node-desc">
+              Zapis spraw, migawek kontrolnych <strong>v1 → v2</strong> (Diff podmiany portfela) i pełnych śladów UTC/SHA-256.
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">→</div>
+
+        <div class="arch-node" style="border-color:#15803D;background:#ECFDF5;">
+          <div>
+            <div class="arch-node-kicker" style="color:#15803D;">Wymienny Silnik AI</div>
+            <div class="arch-node-title" style="color:#15803D;">local-rules / Ollama</div>
+            <div class="arch-node-desc">
+              Kontrakt <span class="mono">AiClient</span>: reguły deterministyczne lub lokalny model LLM wewnątrz sieci KAS (zero chmury).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 Pillars -->
+      <div class="s3-pillars">
+        <div class="pillar pillar-green">
+          <div class="pillar-title">1. Twarda blokada chmury publicznej</div>
+          <ul>
+            <li>Flaga <span class="mono" style="font-size:12px;">OLCYS_AI_ALLOW_EXTERNAL=false</span> blokuje zewnętrzne hosty już na poziomie walidatora URI.</li>
+            <li>Próba połączenia poza sieć lokalną rzuca wyjątek <span class="mono" style="font-size:12px;">SecurityException</span>.</li>
+            <li>Uruchomienie jednym poleceniem <span class="mono" style="font-size:12px;">docker compose up</span> w izolowanej sieci urzędu.</li>
+          </ul>
+        </div>
+
+        <div class="pillar pillar-navy">
+          <div class="pillar-title">2. Architektura pluginowa pod rozwój KAS</div>
+          <ul>
+            <li>Czyste interfejsy rozszerzeń: <span class="mono" style="font-size:12px;">Web2Connector</span>, <span class="mono" style="font-size:12px;">Web3Connector</span>, <span class="mono" style="font-size:12px;">EntityTagProvider</span>, <span class="mono" style="font-size:12px;">AiClient</span>.</li>
+            <li>Łatwa integracja nowych sieci blockchain oraz rejestrów <strong>DAC8 / MiCA / CASP</strong>.</li>
+            <li>Pełna specyfikacja OpenAPI dostępna pod <span class="mono" style="font-size:12px;">/swagger-ui.html</span>.</li>
+          </ul>
+        </div>
+
+        <div class="pillar pillar-amber">
+          <div class="pillar-title">3. Legalny OSINT i czyste licencje OSS</div>
+          <ul>
+            <li>Wyłącznie pasywny OSINT na źródłach publicznych (bez obchodzenia logowań i zabezpieczeń).</li>
+            <li><strong>0 bibliotek GPL / AGPL</strong> — zamiast iText użyto <span class="mono" style="font-size:12px;">Apache PDFBox 3.0.3</span> (Apache 2.0).</li>
+            <li>Kryptografia <span class="mono" style="font-size:12px;">Bouncy Castle 1.79</span> (MIT) oraz frontend <span class="mono" style="font-size:12px;">React 19</span> (MIT).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="closing-banner">
+        <div class="closing-text">
+          OŁCyŚ — Gotowy do pilotażu w Krajowej Administracji Skarbowej
+        </div>
+        <div class="repo-pill mono">github.com/unseen2004/olcys</div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span><strong>OŁCyŚ</strong> • Java 21 LTS + Spring Boot 3.4 + React 19 + PostgreSQL 16</span>
+      <span>Slajd 3 / 3 — Zamknięcie pod sesję Q&amp;A</span>
+    </footer>
+  </section>
+
+</body>
+</html>

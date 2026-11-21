@@ -34,7 +34,7 @@ http_get_json() {
   local url="$1"
   local out_file="$2"
   local status
-  status="$(curl -sS --connect-timeout 5 --max-time 20 \
+  status="$(curl -sS --connect-timeout 5 --max-time 30 \
     -H "Accept: application/json" \
     -o "$out_file" -w "%{http_code}" "$url")" || fail "Połączenie z $url nie powiodło się."
   if [[ "$status" -lt 200 || "$status" -ge 300 ]]; then
@@ -50,7 +50,7 @@ http_post_json() {
   local payload="$2"
   local out_file="$3"
   local status
-  status="$(curl -sS --connect-timeout 5 --max-time 30 \
+  status="$(curl -sS --connect-timeout 5 --max-time 90 \
     -X POST \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
@@ -68,7 +68,7 @@ http_get_binary() {
   local url="$1"
   local out_file="$2"
   local status
-  status="$(curl -sS --connect-timeout 5 --max-time 30 \
+  status="$(curl -sS --connect-timeout 5 --max-time 90 \
     -o "$out_file" -w "%{http_code}" "$url")" || fail "Pobranie pliku z $url nie powiodło się."
   if [[ "$status" -lt 200 || "$status" -ge 300 ]]; then
     fail "Pobranie $url zwróciło kod HTTP $status."

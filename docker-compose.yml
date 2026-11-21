@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: olcys
       POSTGRES_PASSWORD: olcys_dev_password
     ports:
-      - "5432:5432"
+      - "${OLCYS_POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +30,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: olcys_dev_password
       OLCYS_AI_PROVIDER: ${OLCYS_AI_PROVIDER:-local-rules}
       OLCYS_AI_BASE_URL: ${OLCYS_AI_BASE_URL:-http://ollama:11434/v1}
-      OLCYS_AI_MODEL: ${OLCYS_AI_MODEL:-llama3.1:8b}
+      OLCYS_AI_MODEL: ${OLCYS_AI_MODEL:-llama3.2:latest}
       OLCYS_AI_ALLOW_EXTERNAL: "false"
     ports:
       - "8080:8080"

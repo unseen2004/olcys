@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import pl.kas.olcys.api.CyclicMonitoringController;
 import pl.kas.olcys.api.dto.AddressFindingDto;
 import pl.kas.olcys.api.dto.AnalysisMode;
 import pl.kas.olcys.api.dto.AnalysisRunDto;
@@ -23,6 +24,9 @@ import pl.kas.olcys.api.dto.RunDiffDto;
 import pl.kas.olcys.api.dto.ScenarioPresetDto;
 import pl.kas.olcys.api.dto.SubjectSummaryDto;
 import pl.kas.olcys.api.dto.TriggerRunRequest;
+import pl.kas.olcys.domain.AnalysisRunRepository;
+import pl.kas.olcys.domain.MonitoringScheduleEntity;
+import pl.kas.olcys.domain.MonitoringScheduleRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -44,6 +48,15 @@ class OlcysEndToEndTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CyclicMonitoringController cyclicMonitoringController;
+
+    @Autowired
+    private MonitoringScheduleRepository monitoringScheduleRepository;
+
+    @Autowired
+    private AnalysisRunRepository analysisRunRepository;
 
     @Test
     void shouldExposeHealthyOnPremiseStatusAndThreeScenarios() throws Exception {
@@ -424,6 +437,71 @@ class OlcysEndToEndTest {
         assertThat(emptyRun.confirmedAddresses()).isEmpty();
         assertThat(emptyRun.rejectedAddresses()).isEmpty();
         assertThat(emptyRun.report().zone3VerificationConclusions().pit38RiskIndicatorsPl()).isNotEmpty();
+    }
+
+    @Test
+    void shouldPersistMonitoringScheduleInDbAndExecuteHeartbeatWithDiff() throws Exception {
+        CreateSubjectRequest req = new CreateSubjectRequest(
+                "Sprawa CRON Monitoring DB",
+                List.of(
+                        new IdentifierDto("NICK", "krypto_janek"),
+                        new IdentifierDto("FULL_NAME", "Jan Kowalski"),
+                        new IdentifierDto("EMAIL", "janek.dev@example.pl")
+                ),
+                AnalysisMode.SYNTHETIC,
+                List.of("GitHub", "KantorP2P.pl", "WaybackArchive", "ForumKrypto.pl"),
+                List.of("ETH", "BTC"),
+                1
+        );
+
+        MvcResult createRes = mockMvc.perform(post("/api/subjects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        AnalysisRunDto run1 = objectMapper.readValue(
+                createRes.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                AnalysisRunDto.class
+        );
+        String subjectId = run1.subjectId();
+
+        mockMvc.perform(post("/api/subjects/" + subjectId + "/monitoring")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":true,\"intervalHours\":24}"))
+                .andExpect(status().isOk());
+
+        MonitoringScheduleEntity persisted = monitoringScheduleRepository.findById(subjectId).orElseThrow();
+        assertThat(persisted.isEnabled()).isTrue();
+        assertThat(persisted.getIntervalHours()).isEqualTo(24);
+        assertThat(persisted.getLastHeartbeatAt()).isNull();
+        assertThat(analysisRunRepository.findBySubjectIdOrderByRunNumberAsc(subjectId)).hasSize(1);
+
+        // First heartbeat triggers follow-up analysis (snapshotStep=2), computes diff, and records lastHeartbeatAt
+        cyclicMonitoringController.monitoringHeartbeat();
+
+        assertThat(analysisRunRepository.findBySubjectIdOrderByRunNumberAsc(subjectId)).hasSize(2);
+        MonitoringScheduleEntity afterHeartbeat = monitoringScheduleRepository.findById(subjectId).orElseThrow();
+        assertThat(afterHeartbeat.getLastHeartbeatAt()).isNotNull();
+
+        MvcResult diffRes = mockMvc.perform(get("/api/subjects/" + subjectId + "/diff"))
+                .andExpect(status().isOk())
+                .andReturn();
+        RunDiffDto diff = objectMapper.readValue(
+                diffRes.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                RunDiffDto.class
+        );
+        assertThat(diff.walletRotationDetected()).isTrue();
+
+        // Immediate second heartbeat must respect intervalHours=24 and NOT trigger a 3rd run
+        cyclicMonitoringController.monitoringHeartbeat();
+        assertThat(analysisRunRepository.findBySubjectIdOrderByRunNumberAsc(subjectId)).hasSize(2);
+
+        // Disable schedule and verify persistence
+        mockMvc.perform(post("/api/subjects/" + subjectId + "/monitoring")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"intervalHours\":24}"))
+                .andExpect(status().isOk());
+        assertThat(monitoringScheduleRepository.findById(subjectId).orElseThrow().isEnabled()).isFalse();
     }
 
     private static AddressFindingDto findByAddress(List<AddressFindingDto> list, String address) {

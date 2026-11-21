@@ -34,7 +34,9 @@ Na podstawie >=1 identyfikatora wejściowego (imię i nazwisko, nick, ID komunik
 │       ├── main/
 │       │   ├── resources/
 │       │   │   ├── application.yml
-│       │   │   ├── db/migration/V1__init.sql
+│       │   │   ├── db/migration/
+│       │   │   │   ├── V1__init.sql
+│       │   │   │   └── V2__monitoring_schedules.sql
 │       │   │   ├── data/entity-tags.json        # Baza znanych adresów CEX/DEX/CASP/Mixer/Charity
 │       │   │   ├── data/scenarios.json          # 3 zanonimizowane/syntetyczne scenariusze walidacyjne KAS
 │       │   │   └── fonts/DejaVuSans.ttf         # Font z polskimi znakami do PDFBox
@@ -45,13 +47,14 @@ Na podstawie >=1 identyfikatora wejściowego (imię i nazwisko, nick, ID komunik
 │       │       │   ├── dto/                     # Request/Response records (ZAMROŻONY KONTRAKT)
 │       │       │   ├── SubjectController.java
 │       │       │   ├── AnalysisController.java
+│       │       │   ├── CyclicMonitoringController.java # Trwały harmonogram CRON w DB + triggerRun + RunDiffService
 │       │       │   └── HealthController.java
-│       │       ├── domain/                      # Encje JPA + Repo (Subject, AnalysisRun, EvidenceArtifact, AddressFinding)
+│       │       ├── domain/                      # Encje JPA + Repo (Subject, AnalysisRun, EvidenceArtifact, AddressFinding, MonitoringSchedule)
 │       │       ├── crypto/
 │       │       │   └── CryptoAddressValidator.java  # BTC (Base58Check/Bech32), ETH (EIP-55), TRON + ekstraktor
 │       │       ├── connector/
-│       │       │   ├── web2/                    # Web2Connector + GithubConnector, RedditConnector, WaybackConnector, EnsConnector, SyntheticConnector
-│       │       │   └── web3/                    # Web3Connector + EthereumConnector, BitcoinConnector, EntityTagRegistry
+│       │       │   ├── web2/                    # Web2Connector + GithubConnector, RedditConnector (PullPush fallback), WaybackConnector (HTML snapshot), EnsConnector, KeybaseConnector, SyntheticConnector
+│       │       │   └── web3/                    # Web3Connector + EthereumConnector, BitcoinConnector, TronConnector (TronScan + TronGrid), EntityTagRegistry
 │       │       ├── engine/
 │       │       │   ├── FalsePositiveFirewall.java   # bytecode != 0x, tagi CEX/Mixer/Charity, heurystyka
 │       │       │   ├── ConfidenceScorer.java        # Deterministyczne progi KAS + premia synergii +15pp
@@ -152,7 +155,9 @@ Na podstawie >=1 identyfikatora wejściowego (imię i nazwisko, nick, ID komunik
 │       ├── main/
 │       │   ├── resources/
 │       │   │   ├── application.yml
-│       │   │   ├── db/migration/V1__init.sql
+│       │   │   ├── db/migration/
+│       │   │   │   ├── V1__init.sql
+│       │   │   │   └── V2__monitoring_schedules.sql
 │       │   │   ├── data/entity-tags.json        # Baza znanych adresów CEX/DEX/CASP/Mixer/Charity
 │       │   │   ├── data/scenarios.json          # 3 zanonimizowane/syntetyczne scenariusze walidacyjne KAS
 │       │   │   └── fonts/DejaVuSans.ttf         # Font z polskimi znakami do PDFBox
@@ -163,13 +168,14 @@ Na podstawie >=1 identyfikatora wejściowego (imię i nazwisko, nick, ID komunik
 │       │       │   ├── dto/                     # Request/Response records (ZAMROŻONY KONTRAKT)
 │       │       │   ├── SubjectController.java
 │       │       │   ├── AnalysisController.java
+│       │       │   ├── CyclicMonitoringController.java # Trwały harmonogram CRON w DB + triggerRun + RunDiffService
 │       │       │   └── HealthController.java
-│       │       ├── domain/                      # Encje JPA + Repo (Subject, AnalysisRun, EvidenceArtifact, AddressFinding)
+│       │       ├── domain/                      # Encje JPA + Repo (Subject, AnalysisRun, EvidenceArtifact, AddressFinding, MonitoringSchedule)
 │       │       ├── crypto/
 │       │       │   └── CryptoAddressValidator.java  # BTC (Base58Check/Bech32), ETH (EIP-55), TRON + ekstraktor
 │       │       ├── connector/
-│       │       │   ├── web2/                    # Web2Connector + GithubConnector, RedditConnector, WaybackConnector, EnsConnector, SyntheticConnector
-│       │       │   └── web3/                    # Web3Connector + EthereumConnector, BitcoinConnector, EntityTagRegistry
+│       │       │   ├── web2/                    # Web2Connector + GithubConnector, RedditConnector (PullPush fallback), WaybackConnector (HTML snapshot), EnsConnector, KeybaseConnector, SyntheticConnector
+│       │       │   └── web3/                    # Web3Connector + EthereumConnector, BitcoinConnector, TronConnector (TronScan + TronGrid), EntityTagRegistry
 │       │       ├── engine/
 │       │       │   ├── FalsePositiveFirewall.java   # bytecode != 0x, tagi CEX/Mixer/Charity, heurystyka
 │       │       │   ├── ConfidenceScorer.java        # Deterministyczne progi KAS + premia synergii +15pp
@@ -205,9 +211,11 @@ Na podstawie >=1 identyfikatora wejściowego (imię i nazwisko, nick, ID komunik
 * `GET /api/runs/{runId}` -> zwraca pełny `AnalysisRunDto` (graf, dowody z SHA-256, zatwierdzone adresy z `scoreBreakdown`, odrzucone FP, analiza on-chain, sygnały Cash-Out, 3-strefowy `report`).
 * `GET /api/subjects/{id}/diff?from={runId1}&to={runId2}` -> zwraca `RunDiffDto` (nowe/usunięte/podmienione adresy, `walletRotationDetected`, delta wolumenu, nowe sygnały Cash-Out).
 * `GET /api/runs/{runId}/report.pdf` -> zwraca `application/pdf` (Attachment).
+* `GET /api/runs/{runId}/casp-request.pdf` -> zwraca projekt wezwania CASP PDF (art. 182 Ordynacji podatkowej / DAC8).
 * `GET /api/runs/{runId}/report.json` -> zwraca kompletny eksport dowodowy JSON.
+* `GET /api/monitoring` / `POST /api/subjects/{id}/monitoring` -> zarządzanie cyklicznym harmonogramem monitoringu CRON.
 * `GET /api/scenarios` -> zwraca 3 wbudowane zanonimizowane scenariusze walidacyjne KAS.
-* `GET /api/health` -> status PostgreSQL, listy zarejestrowanych konektorów Web2/Web3 oraz aktywnego providera AI (`externalDataTransfer: false`).
+* `GET /api/health` -> status PostgreSQL, listy zarejestrowanych konektorów Web2 (6) / Web3 (3) oraz aktywnego providera AI (`externalDataTransfer: false`).
 
 ## 5. Komendy Weryfikacji (uruchamiaj po każdej zmianie!)
 
@@ -262,7 +270,7 @@ Na podstawie >=1 identyfikatora wejściowego (imię i nazwisko, nick, ID komunik
 >    - **Reguła Synergii:** grupuje dowody po niezależnej platformie/domenie (kilka postów w jednym serwisie = 1 źródło!). Jeśli $\ge 2$ niezależne źródła zawierają ten sam adres $\rightarrow$ **+15 pp** (max 100%).
 >    - Zwraca kompletną listę `ScoreBreakdownItem(ruleId, label, delta, evidenceIds, explanationPl)`.
 > 3. **`CashOutAnalyzer.java`:**
->    - Analizuje transakcje zatwierdzonych portfeli niehostowanych i wykrywa: `CEX_OFFRAMP` (przelew do znanego CEX/CASP/kantoru), `STABLECOIN_CONVERSION` (znaczące transfery/swapy USDT/USDC/DAI), `P2P_OR_GATEWAY` (korelacja daty ogłoszenia P2P z transakcją wychodzącą w oknie ±48h lub bramka/karta krypto-fiat), `RECURRING_CASHOUT` (cykliczne wypłaty zbliżonych kwot).
+>    - Analizuje transakcje zatwierdzonych portfeli niehostowanych i wykrywa: `CEX_OFFRAMP` (przelew do znanego CEX/CASP/kantoru), `STABLECOIN_CONVERSION` (znaczące transfery/swapy USDT/USDC/DAI), `P2P_OR_GATEWAY` (korelacja daty ogłoszenia P2P z transakcją wychodzącą w oknie ±72h lub bramka/karta krypto-fiat), `RECURRING_CASHOUT` (cykliczne wypłaty zbliżonych kwot), `AML_STRUCTURING_OR_2HOP` (wieloetapowe wyjście / dzielenie transz).
 >    - Buduje chronologiczną oś przepływu środków (`TimelineEventDto`) z przeliczeniem szacunkowej wartości na PLN.
 > 4. **`RunDiffService.java`:**
 >    - Porównuje 2 zapisane `AnalysisRun` dla podmiotu: wykrywa **podmianę adresu portfela na tym samym profilu Web2** (`walletRotationDetected = true` + opis starego i nowego adresu), nowo wykryte adresy, zmianę Confidence Score, przyrost wolumenu i nowe zdarzenia Cash-Out.

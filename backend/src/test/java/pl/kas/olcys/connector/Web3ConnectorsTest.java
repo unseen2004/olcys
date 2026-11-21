@@ -3,6 +3,7 @@ package pl.kas.olcys.connector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -27,6 +28,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class Web3ConnectorsTest {
@@ -168,17 +170,23 @@ class Web3ConnectorsTest {
         assertThat(btcProfile.totalInflowNative()).isEqualTo(5.0);
         btcServer.verify();
 
-        // Live TRON resilient error handling
+        // Live TRON resilient fallback from TronScan 401/500 to TronGrid v1 + TRC-20 parsing
         RestClient.Builder tronBuilder = RestClient.builder();
         MockRestServiceServer tronServer = MockRestServiceServer.bindTo(tronBuilder).build();
         tronServer.expect(requestTo("https://apilist.tronscanapi.com/api/accountv2?address=T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb"))
                 .andRespond(withServerError());
+        tronServer.expect(requestTo("https://api.trongrid.io/v1/accounts/T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb"))
+                .andRespond(withSuccess("{\"data\":[{\"balance\":2500000,\"address\":\"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb\"}]}", MediaType.APPLICATION_JSON));
+        tronServer.expect(requestTo("https://api.trongrid.io/v1/accounts/T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb/transactions/trc20?limit=10"))
+                .andRespond(withSuccess("{\"data\":[{\"transaction_id\":\"abc123\",\"block_timestamp\":1771500000000,\"from\":\"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb\",\"to\":\"TNXoiAJ3dct8Fjg4M9fkLFh9S2v9TXc32G\",\"value\":\"5000000000\",\"token_info\":{\"symbol\":\"USDT\",\"decimals\":6}}]}", MediaType.APPLICATION_JSON));
 
         TronConnector liveTron = new TronConnector(tagRegistry, tronBuilder, new ObjectMapper());
         RawOnChainProfile tronProfile = liveTron.inspectAddress(
                 "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb", AnalysisMode.LIVE, 1);
         assertThat(tronProfile.bytecode()).isEqualTo("0x");
-        assertThat(tronProfile.txCount()).isZero();
+        assertThat(tronProfile.txCount()).isEqualTo(1);
+        assertThat(tronProfile.stablecoinVolumeUsd()).isEqualTo(5000.0);
+        assertThat(tronProfile.transactions()).hasSize(1);
         tronServer.verify();
 
         // Live GitHub & ENS graceful failure on HTTP 500
@@ -209,19 +217,33 @@ class Web3ConnectorsTest {
         List<RawEvidence> redditResult = reddit.search(List.of(new IdentifierDto("NICK", "tester")), 1);
         assertThat(redditResult).hasSize(1);
         assertThat(redditResult.get(0).contextHint()).isEqualTo("TRANSACTIONAL_CONTEXT");
+        assertThat(redditResult.get(0).sha256())
+                .isEqualTo(CryptoAddressValidator.sha256Hex(redditResult.get(0).snippet()));
         redditServer.verify();
 
-        // Live Wayback CDX parsing
+        // Live Wayback CDX parsing + archived HTML snapshot text extraction
         RestClient.Builder wbBuilder = RestClient.builder();
         MockRestServiceServer wbServer = MockRestServiceServer.bindTo(wbBuilder).build();
-        wbServer.expect(requestTo("https://web.archive.org/cdx/search/cdx?url=*janek.pl*&output=json&limit=3"))
+        wbServer.expect(requestTo("https://web.archive.org/cdx/search/cdx?url=janek.pl&output=json&limit=3"))
                 .andRespond(withSuccess("[[\"urlkey\",\"timestamp\",\"original\",\"mimetype\",\"statuscode\"],[\"pl,janek)/kontakt\",\"20260210120000\",\"https://janek.pl/kontakt\",\"text/html\",\"200\"]]", MediaType.APPLICATION_JSON));
+        wbServer.expect(requestTo("https://web.archive.org/web/20260210120000id_/https://janek.pl/kontakt"))
+                .andRespond(withSuccess(
+                        "<html><head><style>.h{display:none}</style><script>const x=1;</script></head>"
+                                + "<body><h1>Kontakt</h1><p>Rozliczenia ETH: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045</p></body></html>",
+                        MediaType.TEXT_HTML));
 
         WaybackConnector wb = new WaybackConnector(wbBuilder, new ObjectMapper());
         List<RawEvidence> wbResult = wb.search(List.of(new IdentifierDto("EMAIL", "a@janek.pl")), 1);
         assertThat(wbResult).hasSize(1);
         assertThat(wbResult.get(0).url()).isEqualTo("https://web.archive.org/web/20260210120000/https://janek.pl/kontakt");
         assertThat(wbResult.get(0).contextHint()).isEqualTo("TRANSACTIONAL_CONTEXT");
+        assertThat(wbResult.get(0).snippet())
+                .contains("Treść archiwalna:")
+                .contains("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
+                .doesNotContain("<script>")
+                .doesNotContain("const x=1");
+        assertThat(wbResult.get(0).sha256())
+                .isEqualTo(CryptoAddressValidator.sha256Hex(wbResult.get(0).snippet()));
         wbServer.verify();
 
         // Live ENS positive resolution
@@ -236,7 +258,8 @@ class Web3ConnectorsTest {
         List<RawEvidence> ensResult = ens.search(List.of(new IdentifierDto("ENS", "vitalik.eth")), 1);
         assertThat(ensResult).hasSize(1);
         assertThat(ensResult.get(0).snippet()).contains("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
-        assertThat(ensResult.get(0).sha256()).hasSize(64);
+        assertThat(ensResult.get(0).sha256())
+                .isEqualTo(CryptoAddressValidator.sha256Hex(ensResult.get(0).snippet()));
         ensServer.verify();
 
         // Live ENS unregistered address returns name: null -> must NOT emit evidence
@@ -269,8 +292,46 @@ class Web3ConnectorsTest {
         assertThat(ghSearchResult).hasSize(2);
         assertThat(ghSearchResult.get(0).url()).isEqualTo("https://github.com/torvalds");
         assertThat(ghSearchResult.get(0).matchedIdentifier()).isEqualTo("Linus Torvalds");
+        assertThat(ghSearchResult.get(0).contextHint()).isEqualTo("FORUM_DISCUSSION");
         assertThat(ghSearchResult.get(1).snippet()).contains("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq");
         ghSearchServer.verify();
+
+        // Live GitHub FULL_NAME fuzzy search mismatch (e.g. "Jan Kowalski" -> @johnykov "Jan K.") must be rejected without fetching README/events
+        RestClient.Builder ghMismatchBuilder = RestClient.builder();
+        MockRestServiceServer ghMismatchServer = MockRestServiceServer.bindTo(ghMismatchBuilder).build();
+        ghMismatchServer.expect(requestTo("https://api.github.com/search/users?q=Jan+Kowalski&per_page=1"))
+                .andRespond(withSuccess("{\"total_count\":1,\"items\":[{\"login\":\"johnykov\"}]}", MediaType.APPLICATION_JSON));
+        ghMismatchServer.expect(requestTo("https://api.github.com/users/johnykov"))
+                .andRespond(withSuccess("{\"login\":\"johnykov\",\"name\":\"Jan K.\",\"bio\":\"Backend dev\",\"html_url\":\"https://github.com/johnykov\"}", MediaType.APPLICATION_JSON));
+
+        GithubConnector ghMismatch = new GithubConnector(ghMismatchBuilder, new ObjectMapper());
+        List<RawEvidence> ghMismatchResult = ghMismatch.search(List.of(new IdentifierDto("FULL_NAME", "Jan Kowalski")), 1);
+        assertThat(ghMismatchResult).isEmpty();
+        ghMismatchServer.verify();
+
+        // Live Reddit HTTP 403 -> PullPush fallback parsing & deduplication
+        RestClient.Builder reddit403Builder = RestClient.builder();
+        MockRestServiceServer reddit403Server = MockRestServiceServer.bindTo(reddit403Builder).build();
+        String pullPushPayload = "{\"data\":[{\"subreddit\":\"kryptowaluty\",\"title\":\"Sprzedam ETH P2P\",\"selftext\":\"Adres: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\"full_link\":\"https://www.reddit.com/r/kryptowaluty/comments/abc123/sprzedam_eth_p2p/\"}]}";
+        reddit403Server.expect(requestTo("https://www.reddit.com/user/tester403/submitted.json?limit=10"))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        reddit403Server.expect(requestTo("https://api.pullpush.io/reddit/search/submission/?author=tester403&size=5"))
+                .andRespond(withSuccess(pullPushPayload, MediaType.APPLICATION_JSON));
+        reddit403Server.expect(requestTo("https://www.reddit.com/search.json?q=tester403&limit=5"))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        reddit403Server.expect(requestTo("https://api.pullpush.io/reddit/search/submission/?q=tester403&size=5"))
+                .andRespond(withSuccess(pullPushPayload, MediaType.APPLICATION_JSON));
+
+        RedditConnector reddit403 = new RedditConnector(reddit403Builder, new ObjectMapper());
+        List<RawEvidence> reddit403Result = reddit403.search(List.of(new IdentifierDto("NICK", "tester403")), 1);
+        assertThat(reddit403Result).hasSize(1);
+        assertThat(reddit403Result.get(0).url())
+                .isEqualTo("https://www.reddit.com/r/kryptowaluty/comments/abc123/sprzedam_eth_p2p/");
+        assertThat(reddit403Result.get(0).contextHint()).isEqualTo("TRANSACTIONAL_CONTEXT");
+        assertThat(reddit403Result.get(0).snippet()).contains("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
+        assertThat(reddit403Result.get(0).sha256())
+                .isEqualTo(CryptoAddressValidator.sha256Hex(reddit403Result.get(0).snippet()));
+        reddit403Server.verify();
 
         // Live Keybase user lookup parsing (proofs + cryptocurrency_addresses)
         RestClient.Builder kbBuilder = RestClient.builder();
@@ -293,6 +354,8 @@ class Web3ConnectorsTest {
         assertThat(kbResult).hasSize(1);
         assertThat(kbResult.get(0).url()).isEqualTo("https://keybase.io/janek_kb");
         assertThat(kbResult.get(0).snippet()).contains("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq");
+        assertThat(kbResult.get(0).sha256())
+                .isEqualTo(CryptoAddressValidator.sha256Hex(kbResult.get(0).snippet()));
         kbServer.verify();
     }
 

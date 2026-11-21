@@ -11,7 +11,7 @@
       { "type": "FULL_NAME", "value": "Jan Kowalski" },
       { "type": "EMAIL", "value": "janek.dev@example.pl" }
     ],
-    "recommendedMode": "HYBRID",
+    "recommendedMode": "SYNTHETIC",
     "sources": ["GitHub", "KantorP2P.pl", "WaybackArchive", "ForumKrypto.pl"],
     "networks": ["ETH", "BTC"],
     "supportsWalletRotationDemo": true,

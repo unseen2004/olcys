@@ -134,4 +134,21 @@ class FalsePositiveFirewallTest {
         assertThat(firewall.detectInteraction(aidAddr, "ETH", "Aid For Ukraine (Official ETH)", List.of(confirmedProfile)))
                 .isFalse();
     }
+
+    @Test
+    void shouldAcceptEip7702DelegatedEoaWithoutFalseSmartContractRejection() {
+        String delegatedEoaAddr = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+        String eip7702Bytecode = "0xef01005a7fc11397e9a8ad41bf10bf13f22b0a63f96f6d";
+
+        assertThat(FalsePositiveFirewall.isEip7702DelegatedEoa(eip7702Bytecode)).isTrue();
+        assertThat(FalsePositiveFirewall.isSmartContractBytecode(eip7702Bytecode)).isFalse();
+        assertThat(FalsePositiveFirewall.formatBytecodePrefix(eip7702Bytecode)).isEqualTo("0x");
+
+        RawOnChainProfile profile = new RawOnChainProfile(
+                delegatedEoaAddr, "ETH", eip7702Bytecode, 120,
+                5.0, 2.0, "ETH", 55_000.0, 0.0, null, List.of()
+        );
+        FirewallDecision decision = firewall.evaluate(delegatedEoaAddr, "ETH", profile);
+        assertThat(decision.falsePositive()).isFalse();
+    }
 }

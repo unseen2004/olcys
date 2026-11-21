@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 import pl.kas.olcys.api.dto.AnalysisMode;
 import pl.kas.olcys.api.dto.IdentifierDto;
 
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -64,9 +65,9 @@ public class GithubConnector implements Web2Connector {
                 break;
             }
             if (fetchedLogins.add(handle.toLowerCase(Locale.ROOT))) {
-                fetchUserProfile(handle, handle).ifPresent(evidences::add);
-                fetchProfileReadme(handle, handle).ifPresent(evidences::add);
-                fetchPublicEvents(handle, handle).ifPresent(evidences::add);
+                fetchUserProfile(handle, handle, null).ifPresent(evidences::add);
+                fetchProfileReadme(handle, handle, null).ifPresent(evidences::add);
+                fetchPublicEvents(handle, handle, null).ifPresent(evidences::add);
             }
         }
 
@@ -86,9 +87,12 @@ public class GithubConnector implements Web2Connector {
             String queryValue = id.value().trim();
             searchUserLogin(queryValue).ifPresent(login -> {
                 if (fetchedLogins.add(login.toLowerCase(Locale.ROOT))) {
-                    fetchUserProfile(login, queryValue).ifPresent(evidences::add);
-                    fetchProfileReadme(login, queryValue).ifPresent(evidences::add);
-                    fetchPublicEvents(login, queryValue).ifPresent(evidences::add);
+                    Optional<RawEvidence> profileOpt = fetchUserProfile(login, queryValue, type);
+                    if (profileOpt.isPresent()) {
+                        evidences.add(profileOpt.get());
+                        fetchProfileReadme(login, queryValue, type).ifPresent(evidences::add);
+                        fetchPublicEvents(login, queryValue, type).ifPresent(evidences::add);
+                    }
                 }
             });
         }
@@ -117,7 +121,11 @@ public class GithubConnector implements Web2Connector {
         }
     }
 
-    private Optional<RawEvidence> fetchUserProfile(String handle, String matchedIdentifier) {
+    private Optional<RawEvidence> fetchUserProfile(
+            String handle,
+            String matchedIdentifier,
+            String searchType
+    ) {
         String apiUrl = "https://api.github.com/users/" + Web2ConnectorSupport.urlEncode(handle);
         Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
                 restClient, apiUrl, log, "application/vnd.github+json");
@@ -138,6 +146,13 @@ public class GithubConnector implements Web2Connector {
             String htmlUrl = textOrEmpty(root, "html_url");
             if (htmlUrl.isBlank()) {
                 htmlUrl = "https://github.com/" + handle;
+            }
+
+            if (searchType != null && !corroboratesSearchQuery(
+                    searchType, matchedIdentifier, login.isBlank() ? handle : login, name, bio, email)) {
+                log.debug("Discarding uncorroborated GitHub {} search hit @{} for query '{}'",
+                        searchType, handle, matchedIdentifier);
+                return Optional.empty();
             }
 
             StringBuilder summary = new StringBuilder();
@@ -161,15 +176,19 @@ public class GithubConnector implements Web2Connector {
                 summary.append(" | X: @").append(twitter);
             }
 
+            String snippet = Web2ConnectorSupport.truncateSnippet(summary.toString());
+            String context = "FULL_NAME".equals(searchType)
+                    ? Web2ConnectorSupport.classifyContext(summary.toString(), "FORUM_DISCUSSION")
+                    : "OWN_PROFILE_VERIFIED";
             return Optional.of(new RawEvidence(
                     name(),
                     "CODE_PROFILE",
                     htmlUrl,
                     Instant.now(),
-                    Web2ConnectorSupport.sha256(rawBody),
-                    Web2ConnectorSupport.truncateSnippet(summary.toString()),
+                    Web2ConnectorSupport.sha256(snippet),
+                    snippet,
                     matchedIdentifier,
-                    "OWN_PROFILE_VERIFIED"
+                    context
             ));
         } catch (Exception ex) {
             log.debug("Failed to parse GitHub profile JSON for {}: {}", handle, ex.getMessage());
@@ -177,7 +196,11 @@ public class GithubConnector implements Web2Connector {
         }
     }
 
-    private Optional<RawEvidence> fetchProfileReadme(String handle, String matchedIdentifier) {
+    private Optional<RawEvidence> fetchProfileReadme(
+            String handle,
+            String matchedIdentifier,
+            String searchType
+    ) {
         String encoded = Web2ConnectorSupport.urlEncode(handle);
         String readmeApiUrl = "https://api.github.com/repos/" + encoded + "/" + encoded + "/readme";
         Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
@@ -187,19 +210,26 @@ public class GithubConnector implements Web2Connector {
         }
         String rawReadme = bodyOpt.get();
         String snippet = Web2ConnectorSupport.truncateSnippet("GitHub profilowy README.md (@" + handle + "): " + rawReadme);
+        String context = "FULL_NAME".equals(searchType)
+                ? Web2ConnectorSupport.classifyContext(snippet, "FORUM_DISCUSSION")
+                : "OWN_PROFILE_VERIFIED";
         return Optional.of(new RawEvidence(
                 name(),
                 "CODE_PROFILE",
                 "https://github.com/" + handle + "/" + handle + "#readme",
                 Instant.now(),
-                Web2ConnectorSupport.sha256(rawReadme),
+                Web2ConnectorSupport.sha256(snippet),
                 snippet,
                 matchedIdentifier,
-                "OWN_PROFILE_VERIFIED"
+                context
         ));
     }
 
-    private Optional<RawEvidence> fetchPublicEvents(String handle, String matchedIdentifier) {
+    private Optional<RawEvidence> fetchPublicEvents(
+            String handle,
+            String matchedIdentifier,
+            String searchType
+    ) {
         String eventsUrl = "https://api.github.com/users/" + Web2ConnectorSupport.urlEncode(handle)
                 + "/events/public?per_page=10";
         Optional<String> bodyOpt = Web2ConnectorSupport.safeGet(
@@ -238,20 +268,108 @@ public class GithubConnector implements Web2Connector {
                 return Optional.empty();
             }
 
+            String snippet = Web2ConnectorSupport.truncateSnippet(sb.toString());
+            String context = "FULL_NAME".equals(searchType)
+                    ? Web2ConnectorSupport.classifyContext(snippet, "FORUM_DISCUSSION")
+                    : "OWN_PROFILE_VERIFIED";
             return Optional.of(new RawEvidence(
                     name(),
                     "CODE_ACTIVITY",
                     "https://github.com/" + handle,
                     Instant.now(),
-                    Web2ConnectorSupport.sha256(rawBody),
-                    Web2ConnectorSupport.truncateSnippet(sb.toString()),
+                    Web2ConnectorSupport.sha256(snippet),
+                    snippet,
                     matchedIdentifier,
-                    "OWN_PROFILE_VERIFIED"
+                    context
             ));
         } catch (Exception ex) {
             log.debug("Failed to parse GitHub events JSON for {}: {}", handle, ex.getMessage());
             return Optional.empty();
         }
+    }
+
+    private static boolean corroboratesSearchQuery(
+            String searchType,
+            String query,
+            String login,
+            String name,
+            String bio,
+            String email
+    ) {
+        if ("FULL_NAME".equals(searchType)) {
+            return matchesFullNameQuery(query, login, name, bio);
+        }
+        if ("EMAIL".equals(searchType)) {
+            return matchesEmailQuery(query, login, bio, email);
+        }
+        return true;
+    }
+
+    private static boolean matchesFullNameQuery(String query, String login, String name, String bio) {
+        String normQuery = normalizeForSearch(query);
+        if (normQuery.isBlank()) {
+            return false;
+        }
+        String normName = normalizeForSearch(name);
+        if (!normName.isBlank()) {
+            String[] tokens = normQuery.split("\\s+");
+            boolean allTokensPresent = true;
+            int checked = 0;
+            for (String token : tokens) {
+                if (token.length() < 2) {
+                    continue;
+                }
+                checked++;
+                if (!normName.contains(token)) {
+                    allTokensPresent = false;
+                    break;
+                }
+            }
+            if ((checked > 0 && allTokensPresent) || (checked == 0 && normName.contains(normQuery))) {
+                return true;
+            }
+        }
+        String compactQuery = normQuery.replaceAll("[\\s._-]+", "");
+        String compactLogin = normalizeForSearch(login).replaceAll("[\\s._-]+", "");
+        if (!compactQuery.isBlank() && !compactLogin.isBlank() && compactLogin.equals(compactQuery)) {
+            return true;
+        }
+        String normBio = normalizeForSearch(bio);
+        return !normBio.isBlank() && normBio.contains(normQuery);
+    }
+
+    private static boolean matchesEmailQuery(String query, String login, String bio, String email) {
+        String trimmedQuery = query == null ? "" : query.trim();
+        if (trimmedQuery.isBlank()) {
+            return false;
+        }
+        if (email != null && !email.isBlank() && email.trim().equalsIgnoreCase(trimmedQuery)) {
+            return true;
+        }
+        if (bio != null && !bio.isBlank()
+                && bio.toLowerCase(Locale.ROOT).contains(trimmedQuery.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        int atIdx = trimmedQuery.indexOf('@');
+        if (atIdx > 0) {
+            String localPart = trimmedQuery.substring(0, atIdx);
+            if (login != null && !login.isBlank() && login.trim().equalsIgnoreCase(localPart)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeForSearch(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String replaced = raw.replace('ł', 'l').replace('Ł', 'L');
+        String decomposed = Normalizer.normalize(replaced, Normalizer.Form.NFD);
+        return decomposed.replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private static String textOrEmpty(JsonNode node, String field) {

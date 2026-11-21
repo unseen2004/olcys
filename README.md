@@ -79,7 +79,7 @@ Analizę można rozpocząć od jednego lub wielu identyfikatorów dowolnego typu
 | `displayName` | `string` (wymagane) | Oznaczenie sprawy lub nazwa podmiotu (np. `Jan Kowalski (@krypto_janek)`) |
 | `identifiers` | `IdentifierDto[]` (`>= 1`) | Lista identyfikatorów wejściowych `[{ "type": "...", "value": "..." }]` |
 | `mode` | `HYBRID` \| `LIVE` \| `SYNTHETIC` | **`HYBRID`**: równoległe zapytania live do publicznych API + scenariusze walidacyjne.<br>**`LIVE`**: wyłącznie pasywne zapytania do publicznych API Web2/Web3.<br>**`SYNTHETIC`**: w pełni deterministyczny tryb offline (`< 1s`) dla powtarzalnych testów i walidacji KAS. |
-| `sources` | `string[]` | Lista aktywnych źródeł Web2 (`GitHub`, `Reddit`, `WaybackArchive`, `ENS`, `Synthetic`) |
+| `sources` | `string[]` | Lista aktywnych źródeł Web2 (`GitHub`, `Reddit`, `WaybackArchive`, `ENS`, `Keybase`, `Synthetic`) |
 | `networks` | `string[]` | Zakres monitorowanych sieci Web3 (`ETH`, `BTC`, `TRON`) |
 | `snapshotStep` | `integer` (domyślnie `1`) | Numer kroku migawki czasowej (`1` = analiza bazowa v1, `2` = analiza kontrolna v2 do detekcji rotacji portfela) |
 
@@ -88,7 +88,7 @@ Analizę można rozpocząć od jednego lub wielu identyfikatorów dowolnego typu
 - **Brak zewnętrznego wycieku danych (`OLCYS_AI_ALLOW_EXTERNAL=false`):** system ma zablokowaną komunikację z zewnętrznymi, komercyjnymi API AI (OpenAI, Gemini, Anthropic).
 - **Wymienny adapter AI (`AiClient`):**
   - Domyślnie działa deterministyczny profil `local-rules` (zero zależności zewnętrznych, 100% powtarzalności).
-  - Opcjonalnie obsługuje lokalny serwer LLM **Ollama** (`OLCYS_AI_PROVIDER=ollama`, `OLCYS_AI_BASE_URL=http://ollama:11434/v1`, `OLCYS_AI_MODEL=llama3.1:8b`) uruchamiany w tej samej izolowanej sieci Dockera (profil `ai`).
+  - Opcjonalnie obsługuje lokalny serwer LLM **Ollama** (`OLCYS_AI_PROVIDER=ollama`, `OLCYS_AI_BASE_URL=http://ollama:11434/v1`, `OLCYS_AI_MODEL=llama3.2:latest`) uruchamiany w tej samej izolowanej sieci Dockera (profil `ai`).
   - Endpoint `/api/health` stale raportuje flagę `externalDataTransfer: false`, widoczną na stałym zielonym pasku w nagłówku aplikacji.
 
 ---
@@ -144,11 +144,12 @@ Punktacja dla adresów nieodrzuconych przez Firewall FP jest w **100% determinis
   - Reddit giveaway (`20%`, 1 źródło) = **`20%`** (Scenariusz 3).
 
 ### Krok 4: Detekcja Fiat Cash-Out, analiza przepływów i Diff czasowy (v1 → v2)
-- **4 klasy sygnałów Fiat Cash-Out (`CashOutSignalDto`):**
+- **5 klas sygnałów Fiat Cash-Out (`CashOutSignalDto`):**
   1. `CEX_OFFRAMP` — transfer wychodzący na gorący/depozytowy portfel giełdy CEX (np. Binance, Kraken).
   2. `STABLECOIN_CONVERSION` — znaczące transfery lub swapy na stablecoiny (`USDT`, `USDC`, `DAI`, w tym przez routery DEX).
   3. `P2P_OR_GATEWAY` — korelacja ogłoszenia P2P/OTC z transakcją wychodzącą w oknie ±72h lub przelew do operatora bramki/kantoru (`CASP_P2P`: Zondacrypto, Ramp Network, Bitomat.com, Kantor OTC).
   4. `RECURRING_CASHOUT` — powtarzalne, cykliczne wypłaty zbliżonych kwot (np. regularne cotygodniowe transze ~4 850–5 050 USDT).
+  5. `AML_STRUCTURING_OR_2HOP` — wieloetapowe wyjście (swap DEX/stablecoin -> wypłaty w transzach na CEX/CASP w przedziale 3,5–25 tys. PLN).
 - **Porównywanie analiz w czasie (`RunDiffDto`):** przy cyklicznym uruchomieniu analizy dla tej samej sprawy system porównuje migawki dowodowe z PostgreSQL. Jeżeli pod tym samym źródłem i URL (np. `https://github.com/krypto_janek`) pojawił się nowy adres portfela zastępujący poprzedni, ustawia flagę **`walletRotationDetected = true`**, zapisuje obiekt `WalletRotationEventDto` i oblicza `volumeDeltaPln` oraz `newCashOutSignals`.
 
 ### Krok 5: 3-strefowy raport OSINT (UI + PDFBox + JSON)
@@ -170,8 +171,8 @@ flowchart LR
 
     subgraph ORCH["Silnik Analityczny OŁCyŚ (Virtual Threads, timeout 5s)"]
         direction TB
-        W2["Pluggable Web2Connector[]\nGitHub • Reddit • Wayback • ENS • Synthetic"] --> VAL["CryptoAddressValidator\nETH EIP-55 (Keccak-256)\nBTC Base58Check/Bech32/m • TRON"]
-        VAL --> W3["Pluggable Web3Connector[]\nEthereum (RPC/Blockscout)\nBitcoin (Mempool/Blockstream)\nTRON (TronScan)"]
+        W2["Pluggable Web2Connector[]\nGitHub • Reddit • Wayback • ENS • Keybase • Synthetic"] --> VAL["CryptoAddressValidator\nETH EIP-55 (Keccak-256)\nBTC Base58Check/Bech32/m • TRON"]
+        VAL --> W3["Pluggable Web3Connector[]\nEthereum (RPC/Blockscout)\nBitcoin (Mempool/Blockstream)\nTRON (TronScan/TronGrid)"]
         W3 --> FP["FalsePositiveFirewall (3 warstwy)\n1. bytecode != 0x\n2. entity-tags.json (83 tagi)\n3. txCount > 10 000"]
         FP --> SC["ConfidenceScorer\nProgi KAS + Synergia +15 pp"]
         SC --> CO["CashOutAnalyzer & RunDiffService\nCEX/P2P/Stablecoin/Cykliczność\nDetekcja rotacji portfela v1->v2"]
@@ -204,14 +205,16 @@ olcys/
 │       │   ├── application.yml       # Virtual Threads, Springdoc, ustawienia AI & konektorów
 │       │   ├── application-local.yml # Profil H2 w trybie zgodności PostgreSQL
 │       │   ├── application-test.yml  # Profil testów JUnit 5
-│       │   ├── db/migration/V1__init.sql
+│       │   ├── db/migration/
+│       │   │   ├── V1__init.sql
+│       │   │   └── V2__monitoring_schedules.sql
 │       │   ├── data/entity-tags.json # 83 zweryfikowane tagi (CEX, CASP_P2P, DEX, Stablecoin, Mixer, Charity, Burn)
 │       │   ├── data/scenarios.json   # 3 zanonimizowane/syntetyczne scenariusze walidacyjne KAS
 │       │   └── fonts/                # DejaVuSans.ttf & DejaVuSans-Bold.ttf (polskie znaki w PDF)
 │       └── main/java/pl/kas/olcys/
 │           ├── api/dto/              # 25 niezmiennych rekordów/enumów DTO (kontrakt JSON camelCase)
 │           ├── config/               # WebConfig (RestClient, CORS, OpenAPI), AiProperties
-│           ├── connector/web2/       # Interfejs Web2Connector + 5 implementacji
+│           ├── connector/web2/       # Interfejs Web2Connector + 6 implementacji (GitHub, Reddit, Wayback, ENS, Keybase, Synthetic)
 │           ├── connector/web3/       # Interfejs Web3Connector + ETH/BTC/TRON + EntityTagRegistry
 │           ├── crypto/               # CryptoAddressValidator (EIP-55, Base58Check, Bech32/m, SHA-256)
 │           ├── domain/               # Encje JPA i repozytoria Spring Data
@@ -253,12 +256,12 @@ OLCYS_AI_PROVIDER=ollama docker compose --profile ai up --build
 ```
 Przy pierwszym uruchomieniu pobierz model do kontenera Ollama:
 ```bash
-docker exec -it olcys-ollama ollama pull llama3.1:8b
+docker exec -it olcys-ollama ollama pull llama3.2:latest
 ```
 Jeśli kontener Ollama jest chwilowo niedostępny lub nie ma jeszcze modelu, `OpenAiCompatibleAiClient` automatycznie i bezpiecznie przełącza się na `LocalRulesAiClient` bez przerywania analizy.
 
 ### Wariant C — Uruchomienie lokalne bez Dockera (szybki tryb deweloperski na bazie H2)
-Profil `local` uruchamia wbudowaną bazę H2 w trybie zgodności z PostgreSQL 16 oraz wykonuje migrację Flyway `V1__init.sql` automatycznie przy starcie — nie wymaga uruchomionego serwera Postgres na porcie `5432`.
+Profil `local` uruchamia wbudowaną bazę H2 w trybie zgodności z PostgreSQL 16 oraz wykonuje migracje Flyway (`V1__init.sql`, `V2__monitoring_schedules.sql`) automatycznie przy starcie — nie wymaga uruchomionego serwera Postgres na porcie `5432`.
 
 1. **Terminal 1 — Backend (port `8080`):**
    ```bash
@@ -285,7 +288,7 @@ java -jar target/olcys-backend-1.0.0.jar --spring.profiles.active=local --server
 - **Backend REST API:** `http://localhost:8080`
 - **Dokumentacja interaktywna Swagger UI:** `http://localhost:8080/swagger-ui.html`
 - **Specyfikacja OpenAPI 3 (JSON):** `http://localhost:8080/v3/api-docs`
-- **Baza PostgreSQL 16 (tylko wariant Docker):** `localhost:5432` (baza `olcys`, użytkownik `olcys`)
+- **Baza PostgreSQL 16 (tylko wariant Docker):** `localhost:5433` (domyślnie mapowany przez `OLCYS_POSTGRES_PORT:-5433` na `5432` w kontenerze; baza `olcys`, użytkownik `olcys`)
 
 ### Kluczowe zmienne środowiskowe
 
@@ -297,7 +300,7 @@ java -jar target/olcys-backend-1.0.0.jar --spring.profiles.active=local --server
 | `SPRING_DATASOURCE_PASSWORD` | `olcys_dev_password` | Hasło bazy danych |
 | `OLCYS_AI_PROVIDER` | `local-rules` | Silnik podsumowań AI: `local-rules` \| `ollama` \| `openai-compatible` |
 | `OLCYS_AI_BASE_URL` | `http://ollama:11434/v1` (Docker) / `http://localhost:11434/v1` | Adres lokalnego serwera OpenAI-compatible (Ollama) |
-| `OLCYS_AI_MODEL` | `llama3.1:8b` | Nazwa modelu LLM używanego po włączeniu Ollamy |
+| `OLCYS_AI_MODEL` | `llama3.2:latest` | Nazwa modelu LLM używanego po włączeniu Ollamy |
 | `OLCYS_AI_ALLOW_EXTERNAL` | `false` | Twarda blokada wysyłania danych poza hosta lokalnego/sieć kontenerową |
 
 ---
@@ -307,7 +310,7 @@ java -jar target/olcys-backend-1.0.0.jar --spring.profiles.active=local --server
 ### Sposób 1: Praca w interfejsie webowym KAS (`http://localhost:5173`)
 
 1. **Weryfikacja stanu bezpieczeństwa w nagłówku:**
-   - Górny pasek automatycznie odpytuje `GET /api/health` i wyświetla status bazy danych, wersję Javy, włączone `Virtual Threads`, liczbę konektorów (`5 Web2 / 3 Web3`) oraz zielony znacznik **`AI: Lokalny On-Premise | Zero transferu zewnętrznego`**.
+   - Górny pasek automatycznie odpytuje `GET /api/health` i wyświetla status bazy danych, wersję Javy, włączone `Virtual Threads`, liczbę konektorów (`6 Web2 / 3 Web3`) oraz zielony znacznik **`AI: Lokalny On-Premise | Zero transferu zewnętrznego`**.
 2. **Uruchomienie jednego z 3 gotowych scenariuszy walidacyjnych (Szybki start):**
    - W lewym panelu (`SearchForm`) kliknij przycisk **„Uruchom scenariusz”** na wybranej karcie:
      - **Scenariusz 1 (`@krypto_janek`)** — pełna ścieżka PIT-38, synergia +15 pp (`100%`), odrzucenie Binance (`CEX`) i Uniswap V3 (`SMART_CONTRACT`), korelacja P2P.
@@ -372,8 +375,8 @@ curl -s -o "raport-${RUN1_ID}.json" "http://localhost:8080/api/runs/${RUN1_ID}/r
 
 ## ✅ Testy i weryfikacja (JUnit 5, Vite, E2E API Check)
 
-### 1. Testy jednostkowe i integracyjne backendu (33 testy w 11 klasach JUnit 5)
-Testy uruchamiają się na profilu `test` (wbudowana baza H2 w trybie zgodności PostgreSQL + migracje Flyway, bez potrzeby uruchamiania Dockera ani zewnętrznych usług):
+### 1. Testy jednostkowe i integracyjne backendu (40 testów w 12 klasach JUnit 5)
+Testy uruchamiają się na profilu `test` (wbudowana baza H2 w trybie zgodności PostgreSQL + migracje Flyway, bez potrzeby uruchamiania Dockera ani zewnętrznych usług); klasa `LocalOllamaLiveIntegrationTest` automatycznie weryfikuje również działający lokalny serwer Ollama, gdy model `llama3.2:latest` jest dostępny pod `localhost:11434`:
 
 ```bash
 cd /home/maks/HN/olcys/backend
@@ -388,17 +391,18 @@ Uruchomienie wybranej klasy testowej:
 
 | Klasa testowa (`backend/src/test/java/pl/kas/olcys/`) | Liczba testów | Zakres weryfikowany |
 | :--- | :---: | :--- |
-| `OlcysEndToEndTest` | 3 | Pełne flow HTTP (`MockMvc` + H2/Flyway): `/api/health`, `/api/scenarios`, Scenariusz 1 v1+v2+Diff+PDF+JSON, Scenariusz 2 (`RECURRING_CASHOUT`), Scenariusz 3 (`20%`/`0%`), obsługa błędów 400/404 |
+| `OlcysEndToEndTest` | 5 | Pełne flow HTTP (`MockMvc` + H2/Flyway): `/api/health`, `/api/scenarios`, Scenariusz 1 v1+v2+Diff+PDF+JSON+CASP PDF, Scenariusz 2 (`RECURRING_CASHOUT`), Scenariusz 3 (`20%`/`0%`), walidacja wszystkich 6 typów wejścia, trwały zapis harmonogramu CRON w DB (`monitoring_schedules`) + wykonanie `monitoringHeartbeat()` z automatycznym diffem, obsługa błędów 400/404 |
 | `crypto/CryptoAddressValidatorTest` | 5 | Walidacja ETH EIP-55 (Keccak-256), BTC Legacy/P2SH/Bech32/Bech32m, TRON Base58Check, odrzucanie 64-znakowych hashy TX, SHA-256 |
-| `engine/FalsePositiveFirewallTest` | 4 | Wykluczanie smart kontraktów (`bytecode != 0x`), tagów CEX/MIXER/CHARITY, progu `txCount > 10 000` (`SUSPECTED_CUSTODIAL`) oraz flaga `interactionRecorded` |
+| `engine/FalsePositiveFirewallTest` | 5 | Wykluczanie smart kontraktów (`bytecode != 0x`), akceptacja portfeli EOA z delegacją EIP-7702 (`0xef0100...`), tagi CEX/MIXER/CHARITY, próg `txCount > 10 000` (`SUSPECTED_CUSTODIAL`) oraz flaga `interactionRecorded` |
 | `engine/ConfidenceScorerTest` | 3 | Wszystkie progi bazowe (`85/70/50/20/0%`), brak sumowania wielokrotnych wpisów na jednej domenie, premia synergii `+15 pp` dla `>= 2` niezależnych źródeł (limit `100%`) |
-| `engine/ai/OpenAiCompatibleAiClientTest` | 3 | Rzucenie `SecurityException` przy zewnętrznym URL z `allowExternal=false`, akceptacja hostów lokalnych (`localhost`, `ollama`), bezpieczny fallback do `local-rules` |
+| `engine/ai/OpenAiCompatibleAiClientTest` | 4 | Rzucenie `SecurityException` przy zewnętrznym URL z `allowExternal=false`, akceptacja hostów lokalnych (`localhost`, `ollama`), bezpieczny fallback do `local-rules` oraz post-processing `sanitizeExecutiveSummaryPl()` dla modeli 3B |
 | `engine/ai/LocalRulesAiClientTest` | 2 | Deterministyczna klasyfikacja kontekstu i generowanie podsumowania wykonawczego po polsku |
+| `engine/ai/LocalOllamaLiveIntegrationTest` | 3 | Testy integracyjne na żywo z lokalnym serwerem Ollama (`llama3.2:latest`, uruchamiane warunkowo przez `Assumptions` przy aktywnej Ollamie) |
 | `report/PdfReportGeneratorTest` | 1 | Generacja wielostronicowego PDF z polskimi znakami UTF-8 (`ą ć ę ł ń ó ś ź ż`) przez Apache PDFBox 3.0.3 i podziałem na 3 sekcje |
 | `connector/EntityTagRegistryTest` | 4 | Ładowanie `>= 60` (83) tagów z `entity-tags.json`, lookup case-insensitive dla ETH i dokładny dla BTC/TRON, walidacja sum kontrolnych każdego adresu w pliku |
 | `connector/SyntheticConnectorTest` | 4 | Poprawność 3 scenariuszy, rotacja portfela między `snapshotStep=1` a `snapshotStep=2` na GitHub, walidacja wszystkich adresów w snippetach |
-| `connector/Web3ConnectorsTest` | 3 | Profile syntetyczne ETH/BTC/TRON oraz mockowane odpowiedzi live RPC/Blockscout/Mempool |
-| `connector/ConnectorContextWiringTest` | 1 | Pełne wstrzykiwanie pluginów Springa: `5 Web2Connector`, `3 Web3Connector`, `EntityTagProvider`, `ScenarioProvider` |
+| `connector/Web3ConnectorsTest` | 3 | Profile syntetyczne ETH/BTC/TRON oraz mockowane odpowiedzi live RPC/Blockscout/Mempool/TronGrid/GitHub (w tym odrzucenie błędnych trafień `FULL_NAME`)/Reddit (w tym fallback HTTP 403 -> PullPush)/Wayback (ekstrakcja tekstu HTML migawki)/ENS/Keybase |
+| `connector/ConnectorContextWiringTest` | 1 | Pełne wstrzykiwanie pluginów Springa: `6 Web2Connector`, `3 Web3Connector`, `EntityTagProvider`, `ScenarioProvider` |
 
 ### 2. Test kompilacji TypeScript i budowania frontendu
 ```bash
@@ -420,7 +424,7 @@ Skrypt wykonuje przez `curl` i `jq` **8 asercji end-to-end**: weryfikuje `/api/h
 
 ## 🔌 Kontrakt REST API i OpenAPI / Swagger UI
 
-Pełna dokumentacja interaktywna dostępna jest pod adresem **`http://localhost:8080/swagger-ui.html`**. Wszystkie odpowiedzi używają konwencji JSON `camelCase` zdefiniowanej w rekordach `pl.kas.olcys.api.dto.*` oraz lustrzanie odwzorowanej w `frontend/src/types/api.ts`.
+Pełna dokumentacja interaktywna dostępna jest pod adresem **`http://localhost:8080/swagger-ui.html`** (11 ścieżek / 12 operacji HTTP). Wszystkie odpowiedzi używają konwencji JSON `camelCase` zdefiniowanej w rekordach `pl.kas.olcys.api.dto.*` oraz lustrzanie odwzorowanej w `frontend/src/types/api.ts`.
 
 | Metoda i ścieżka | Ciało żądania / Parametry | Typ odpowiedzi | Opis |
 | :--- | :--- | :--- | :--- |
@@ -432,7 +436,10 @@ Pełna dokumentacja interaktywna dostępna jest pod adresem **`http://localhost:
 | `GET /api/runs/{runId}` | — | `AnalysisRunDto` | Pełny wynik analizy: dowody SHA-256, zatwierdzone adresy, odrzucone FP, Cash-Out, graf i 3-strefowy raport |
 | `GET /api/subjects/{id}/diff` | `?from={runId1}&to={runId2}` | `RunDiffDto` | Porównanie dwóch analiz w czasie (detekcja podmiany portfela, dodane/usunięte adresy, delta wolumenu) |
 | `GET /api/runs/{runId}/report.pdf` | — | `application/pdf` | Wygenerowany raport dowodowy PDF (Apache PDFBox 3.0.3, polskie znaki `DejaVuSans`) |
+| `GET /api/runs/{runId}/casp-request.pdf` | — | `application/pdf` | Projekt wezwania organu KAS do podmiotu CASP / giełdy (art. 182 Ordynacji podatkowej / DAC8) |
 | `GET /api/runs/{runId}/report.json` | — | `application/json` | Kompletny eksport dowodowy JSON do archiwizacji w aktach KAS |
+| `GET /api/monitoring` | — | `MonitoringStatusDto[]` | Lista spraw objętych cyklicznym harmonogramem monitoringu KAS (CRON) |
+| `POST /api/subjects/{id}/monitoring` | `MonitoringRequest` | `MonitoringStatusDto` | Włącza lub wyłącza cykliczny harmonogram monitoringu zmian portfeli dla sprawy |
 
 ---
 
@@ -453,7 +460,7 @@ Audyt został przeprowadzony bezpośrednio na podstawie `backend/pom.xml` (wraz 
 | `hibernate-commons-annotations` / `jandex` / `byte-buddy` | `7.0.3` / `3.2.0` / `1.15.10` | Metadane i proxy runtime JPA | **Apache-2.0** |
 | `antlr4-runtime` | `4.13.0` | Parser zapytań HQL/JPQL w Hibernate | **BSD-3-Clause** |
 | `spring-boot-starter-validation` (`hibernate-validator`, `jakarta.validation-api`) | `3.4.0` (`8.0.1` / `3.0.2`) | Walidacja kontraktów DTO (`@NotBlank`, `@NotEmpty`) | **Apache-2.0** |
-| `flyway-core` + `flyway-database-postgresql` | `10.20.1` | Wersjonowane migracje schematu SQL (`V1__init.sql`) | **Apache-2.0** |
+| `flyway-core` + `flyway-database-postgresql` | `10.20.1` | Wersjonowane migracje schematu SQL (`V1__init.sql`, `V2__monitoring_schedules.sql`) | **Apache-2.0** |
 | `org.postgresql:postgresql` (JDBC Driver) | `42.7.4` | Sterownik JDBC dla PostgreSQL 16 | **BSD-2-Clause** |
 | `com.h2database:h2` | `2.3.232` | Wbudowana baza in-memory (tryb PostgreSQL) dla testów i profilu `local` | **EPL-1.0 / MPL-2.0** *(dual)* |
 | `org.apache.pdfbox:pdfbox` (`fontbox`, `pdfbox-io`) | `3.0.3` | Generator raportów PDF (wybrany zamiast iText/AGPL) | **Apache-2.0** |
@@ -495,13 +502,14 @@ Wszystkie **213 paczek** w drzewie `node_modules` posiada wyłącznie permisywne
 
 | Źródło / Konektor | Klasa w `connector/` | Endpoint publiczny | Zakres i zasady użycia |
 | :--- | :--- | :--- | :--- |
-| **GitHub Public API** | `GithubConnector` | `https://api.github.com/users/{nick}`, `/events/public` | Publiczne bio, blog, firma, e-maile w commitach publicznych, komentarze (bez tokenów prywatnych). |
-| **Reddit Public JSON** | `RedditConnector` | `https://www.reddit.com/user/{nick}/submitted.json`, `/search.json` | Publiczne posty i dyskusje z klasyfikacją kontekstu (P2P vs forum vs giveaway). |
-| **Wayback Machine CDX** | `WaybackConnector` | `https://web.archive.org/cdx/search/cdx` | Publiczny indeks archiwalnych migawek stron i domen z e-maili firmowych. |
+| **GitHub Public API** | `GithubConnector` | `https://api.github.com/users/{nick}`, `/events/public`, `/search/users` | Publiczne bio, blog, firma, e-maile w commitach publicznych, komentarze z walidacją zgodności zapytań `FULL_NAME`/`EMAIL` (bez tokenów prywatnych). |
+| **Reddit Public JSON / PullPush** | `RedditConnector` | `https://www.reddit.com/user/{nick}/submitted.json`, `/search.json`, fallback `https://api.pullpush.io/reddit/search/submission/` | Publiczne posty i dyskusje (z automatycznym fallbackiem PullPush przy blokadzie 403) oraz klasyfikacja kontekstu (P2P vs forum vs giveaway). |
+| **Wayback Machine CDX & Snapshot** | `WaybackConnector` | `https://web.archive.org/cdx/search/cdx`, `https://web.archive.org/web/{ts}id_/{url}` | Publiczny indeks archiwalnych migawek stron i domen z e-maili firmowych wraz z ekstrakcją tekstu zarchiwizowanego HTML. |
 | **ENS Public Resolver** | `EnsConnector` | `https://api.ensideas.com/ens/resolve/{query}` | Publiczne rekordy nazw `.eth` i reverse lookup dla adresów Ethereum. |
-| **Ethereum RPC & Blockscout** | `EthereumConnector` | `https://ethereum-rpc.publicnode.com` (`eth_getCode`), `https://eth.blockscout.com/api/v2/addresses/{addr}` | Inspekcja kodu bajtowego smart kontraktów, etykiety adresów, lista transakcji. |
+| **Keybase Public API** | `KeybaseConnector` | `https://keybase.io/_/api/1.0/user/lookup.json?usernames={nick}` | Publiczne dowody tożsamości i przypięte adresy krypto użytkowników Keybase. |
+| **Ethereum RPC & Blockscout** | `EthereumConnector` | `https://ethereum-rpc.publicnode.com` (`eth_getCode`), `https://eth.blockscout.com/api/v2/addresses/{addr}` (+ `/counters`) | Inspekcja kodu bajtowego smart kontraktów (z obsługą EIP-7702), etykiety adresów, liczniki i lista transakcji. |
 | **Bitcoin Mempool / Blockstream** | `BitcoinConnector` | `https://mempool.space/api/address/{addr}`, `https://blockstream.info/api/address/{addr}` | Statystyki UTXO (`funded_txo_sum`, `spent_txo_sum`, `tx_count`) i transakcje BTC. |
-| **TRON TronScan API** | `TronConnector` | `https://apilist.tronscanapi.com/api/accountv2?address={addr}` | Typ konta (EOA vs smart kontrakt), tagi publiczne, saldo i liczba transakcji. |
+| **TRON TronScan / TronGrid API** | `TronConnector` | `https://apilist.tronscanapi.com/api/accountv2?address={addr}`, fallback `https://api.trongrid.io/v1/accounts/{addr}` | Typ konta (EOA vs smart kontrakt), tagi publiczne, saldo i historia transferów TRC-20. |
 | **Scenariusze Walidacyjne KAS** | `SyntheticConnector` | Zasób lokalny `resources/data/scenarios.json` | 3 wbudowane zanonimizowane/syntetyczne przypadki testowe do deterministycznej walidacji offline. |
 
 ---
@@ -512,8 +520,8 @@ System posiada 3 wbudowane scenariusze testowe (`backend/src/main/resources/data
 
 | ID scenariusza (`id`) | Podmiot i identyfikatory | Tryb zalecany | Zakres testowany i oczekiwany rezultat |
 | :--- | :--- | :--- | :--- |
-| **`scenariusz-1-janek`** | `Jan Kowalski (@krypto_janek)`<br>`NICK: krypto_janek`<br>`FULL_NAME: Jan Kowalski`<br>`EMAIL: janek.dev@example.pl` | `HYBRID` *(działa też deterministycznie w `SYNTHETIC`)* | **Krok 1 (`snapshotStep: 1`):**<br>• ETH `0x71C7656EC7ab88b098defB751B7401B5f6d8976F` → **`100%`** (`GitHub 85%` + `KantorP2P.pl +15 pp`).<br>• BTC `bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq` → **`70%`** (`WaybackArchive`, stopka e-mail).<br>• Odrzucone FP (`0%`): `Uniswap V3: SwapRouter` (`0xE592...1564`, `bytecode != 0x` / `DEX_ROUTER`) oraz `Binance 14 (Hot Wallet)` (`0x28C6...1d60`, `CEX`, **`interactionRecorded: true`**).<br>• Sygnały Cash-Out: `CEX_OFFRAMP`, `STABLECOIN_CONVERSION`, `P2P_OR_GATEWAY`.<br>**Krok 2 (`snapshotStep: 2`):**<br>• Rotacja portfela ETH na GitHubie i KantorP2P.pl na `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045` (`100%`).<br>• `GET /diff`: **`walletRotationDetected: true`**, dodatnia delta wolumenu (`112 400 → 169 400 PLN`). |
-| **`scenariusz-2-reverse-osint`** | `Sprawa Reverse-OSINT: Niezgłoszony kantor OTC`<br>`CRYPTO_ADDRESS: 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B`<br>`TELEGRAM_ID: @marek_otc_kantor` | `SYNTHETIC` | **Dochodzenie odwrotne (od adresu krypto):**<br>• Łączy wpis z kanału `Telegram OTC` i wątku `Reddit` (`r/kryptowaluty`).<br>• Potwierdza portfel ETH `0xAb58...eC9B` (`85%`) oraz ujawnia drugi prywatny portfel w sieci **TRON**: `T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb` (`85%` dzięki synergii `70 + 15 pp`).<br>• Wykrywa **wszystkie 4 klasy sygnałów Fiat Cash-Out**: `CEX_OFFRAMP`, `STABLECOIN_CONVERSION`, `P2P_OR_GATEWAY` i `RECURRING_CASHOUT` (cykliczne transze ~5 000 USDT na Zondacrypto, Kraken, Binance TRON, Ramp Network, Kantor OTC Warszawa). |
+| **`scenariusz-1-janek`** | `Jan Kowalski (@krypto_janek)`<br>`NICK: krypto_janek`<br>`FULL_NAME: Jan Kowalski`<br>`EMAIL: janek.dev@example.pl` | `SYNTHETIC` | **Krok 1 (`snapshotStep: 1`):**<br>• ETH `0x71C7656EC7ab88b098defB751B7401B5f6d8976F` → **`100%`** (`GitHub 85%` + `KantorP2P.pl +15 pp`).<br>• BTC `bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq` → **`70%`** (`WaybackArchive`, stopka e-mail).<br>• Odrzucone FP (`0%`): `Uniswap V3: SwapRouter` (`0xE592...1564`, `bytecode != 0x` / `DEX_ROUTER`) oraz `Binance 14 (Hot Wallet)` (`0x28C6...1d60`, `CEX`, **`interactionRecorded: true`**).<br>• Sygnały Cash-Out: `CEX_OFFRAMP`, `STABLECOIN_CONVERSION`, `P2P_OR_GATEWAY`, `AML_STRUCTURING_OR_2HOP`.<br>**Krok 2 (`snapshotStep: 2`):**<br>• Rotacja portfela ETH na GitHubie i KantorP2P.pl na `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045` (`100%`).<br>• `GET /diff`: **`walletRotationDetected: true`**, dodatnia delta wolumenu (`112 400 → 169 400 PLN`). |
+| **`scenariusz-2-reverse-osint`** | `Sprawa Reverse-OSINT: Niezgłoszony kantor OTC`<br>`CRYPTO_ADDRESS: 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B`<br>`TELEGRAM_ID: @marek_otc_kantor` | `SYNTHETIC` | **Dochodzenie odwrotne (od adresu krypto):**<br>• Łączy wpis z kanału `Telegram OTC` i wątku `Reddit` (`r/kryptowaluty`).<br>• Potwierdza portfel ETH `0xAb58...eC9B` (`85%`) oraz ujawnia drugi prywatny portfel w sieci **TRON**: `T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb` (`85%` dzięki synergii `70 + 15 pp`).<br>• Wykrywa **wszystkie główne klasy sygnałów Fiat Cash-Out**: `CEX_OFFRAMP`, `STABLECOIN_CONVERSION`, `P2P_OR_GATEWAY`, `RECURRING_CASHOUT` oraz `AML_STRUCTURING_OR_2HOP` (cykliczne transze ~5 000 USDT na Zondacrypto, Kraken, Binance TRON, Ramp Network, Kantor OTC Warszawa). |
 | **`scenariusz-3-szum-fp`** | `Weryfikacja negatywna: @lucky_drop_2026`<br>`NICK: lucky_drop_2026` | `SYNTHETIC` | **Odporność na szum i fałszywe trafienia:**<br>• Adres z komentarza airdropowego na Reddit `0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed` → niski wynik **`20%`** (`MASS_COMMENT_NOISE`), brak sygnałów Cash-Out.<br>• Cytowane na forum adresy `Aid For Ukraine` (`0x165C...5e14`, `CHARITY`) oraz `Tornado Cash: Router` (`0xd90e...F31b`, `MIXER` / `SMART_CONTRACT`) → odrzucone z wynikiem **`0%`**. |
 
 ### Przykładowa odpowiedź JSON (ilustracja kontraktu `AnalysisRunDto` i `RunDiffDto`)
@@ -635,7 +643,7 @@ Wywołanie porównania czasowego (`GET /api/subjects/{subjectId}/diff?from={run1
 
 ### Zrzuty ekranu z interfejsu analitycznego KAS
 
-Po uruchomieniu aplikacji (`http://localhost:5173`) i wykonaniu scenariuszy walidacyjnych zrzuty ekranu poszczególnych modułów zaleca się zapisywać w katalogu `docs/screenshots/` według poniższej konwencji:
+Po uruchomieniu aplikacji (`http://localhost:5173`) i wykonaniu scenariuszy walidacyjnych wyrenderowane zrzuty ekranu poszczególnych modułów znajdują się w katalogu `docs/screenshots/`:
 
 | Plik docelowy | Widok interfejsu (`frontend/src/components/`) | Kluczowe elementy do uchwycenia |
 | :--- | :--- | :--- |
@@ -654,12 +662,12 @@ Po uruchomieniu aplikacji (`http://localhost:5173`) i wykonaniu scenariuszy wali
 | Wymaganie z `OSINT.pdf` | Realizacja w kodzie i zasobach |
 | :--- | :--- |
 | **Wejście ≥ 1 identyfikator (imię/nazwisko, nick, komunikator, social, e-mail, adres krypto)** | `IdentifierDto`, `SearchForm.tsx`, obsługiwane przez wszystkie `Web2Connector` oraz bezpośrednio w `AnalysisOrchestrator` |
-| **Wyłącznie pasywne, publiczne, jawne i legalne źródła OSINT (Sekcja 7)** | `GithubConnector`, `RedditConnector`, `WaybackConnector`, `EnsConnector`, `EthereumConnector`, `BitcoinConnector`, `TronConnector`, `SyntheticConnector` |
+| **Wyłącznie pasywne, publiczne, jawne i legalne źródła OSINT (Sekcja 7)** | `GithubConnector`, `RedditConnector`, `WaybackConnector`, `EnsConnector`, `KeybaseConnector`, `EthereumConnector`, `BitcoinConnector`, `TronConnector`, `SyntheticConnector` |
 | **Ekstrakcja i walidacja adresów z tekstu (Sekcja 3 & Załącznik KROK 1)** | `CryptoAddressValidator.java` (ETH EIP-55 Keccak-256 + odfiltrowanie 64-znakowych hashy TX, BTC Base58Check/Bech32/Bech32m, TRON Base58Check) |
 | **Wskaźnik Pewności Confidence Score 0–100% i wyjaśnialność (Sekcja 3 & KROK 2)** | `ConfidenceScorer.java` (progi 85/70/50/20/0% + premia synergii `+15 pp` dla ≥2 niezależnych źródeł + `ScoreBreakdownItemDto`) |
-| **Ograniczanie błędnych przypisań: giełdy, powiernicze, smart kontrakty, zbiórki (Sekcja 3 & KROK 3)** | `FalsePositiveFirewall.java` (`eth_getCode != 0x`, 83 tagi w `entity-tags.json`, `txCount > 10 000`) z zachowaniem `interactionRecorded = true` |
-| **Detekcja sygnałów Fiat Cash-Out (P2P, bramki, stablecoiny, off-ramp CEX) (Sekcja 3)** | `CashOutAnalyzer.java` (`CEX_OFFRAMP`, `STABLECOIN_CONVERSION`, `P2P_OR_GATEWAY` ±72h, `RECURRING_CASHOUT`) + `BlockchainFlow.tsx` |
-| **Cykliczne analizy, zapis z metadanymi i porównywanie zmian w czasie (Sekcja 2 & 3 opcjonalne)** | `PostgreSQL` + `Flyway V1__init.sql` + `AnalysisRunEntity` + `RunDiffService.java` (`walletRotationDetected = true`) + `HistoryDiff.tsx` |
+| **Ograniczanie błędnych przypisań: giełdy, powiernicze, smart kontrakty, zbiórki (Sekcja 3 & KROK 3)** | `FalsePositiveFirewall.java` (`eth_getCode != 0x` z obsługą EIP-7702, 83 tagi w `entity-tags.json`, `txCount > 10 000`) z zachowaniem `interactionRecorded = true` |
+| **Detekcja sygnałów Fiat Cash-Out (P2P, bramki, stablecoiny, off-ramp CEX) (Sekcja 3)** | `CashOutAnalyzer.java` (`CEX_OFFRAMP`, `STABLECOIN_CONVERSION`, `P2P_OR_GATEWAY` ±72h, `RECURRING_CASHOUT`, `AML_STRUCTURING_OR_2HOP`) + `BlockchainFlow.tsx` |
+| **Cykliczne analizy, zapis z metadanymi i porównywanie zmian w czasie (Sekcja 2 & 3 opcjonalne)** | `PostgreSQL` + Flyway (`V1__init.sql`, `V2__monitoring_schedules.sql`) + `MonitoringScheduleEntity` + `CyclicMonitoringController` + `AnalysisRunEntity` + `RunDiffService.java` (`walletRotationDetected = true`) + `HistoryDiff.tsx` |
 | **Scenariusze walidacyjne z danymi zanonimizowanymi/syntetycznymi (Sekcja 3)** | 3 scenariusze w `scenarios.json` (`scenariusz-1-janek`, `scenariusz-2-reverse-osint`, `scenariusz-3-szum-fp`), testy `OlcysEndToEndTest` i `run-demo-check.sh` |
 | **3-strefowy raport OSINT czytelny dla osób nietechnicznych (Sekcja 6 & 7)** | `ReportBuilder.java` + `PdfReportGenerator.java` (Apache PDFBox 3.0.3 + `DejaVuSans`) + `OsintReportView.tsx` + `/report.pdf` + `/report.json` |
 | **Open Source (zero GPL/AGPL), monorepo, Java + React + PostgreSQL, wymienny lokalny AI (Sekcja 5 & KROK 4)** | Monorepo `backend/` (Java 21 + Spring Boot 3.4) + `frontend/` (React 19 + TS), `AiClientRouter` + `OpenAiCompatibleAiClient` (`OLCYS_AI_ALLOW_EXTERNAL=false`) |

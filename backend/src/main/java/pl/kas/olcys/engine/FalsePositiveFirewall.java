@@ -143,12 +143,38 @@ public class FalsePositiveFirewall {
         return false;
     }
 
+    /**
+     * Checks whether the bytecode is an EIP-7702 delegation designator (23 bytes: 0xef0100 + 20-byte address),
+     * which marks a delegated EOA (not a deployed smart contract).
+     */
+    public static boolean isEip7702DelegatedEoa(String bytecode) {
+        if (bytecode == null) {
+            return false;
+        }
+        String normalized = bytecode.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.startsWith("0xef0100") || normalized.length() != 48) {
+            return false;
+        }
+        for (int i = 2; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+            boolean isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+            if (!isHex) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static boolean isSmartContractBytecode(String bytecode) {
-        return bytecode != null && !bytecode.isBlank() && !"0x".equalsIgnoreCase(bytecode.trim());
+        if (bytecode == null || bytecode.isBlank()) {
+            return false;
+        }
+        String trimmed = bytecode.trim();
+        return !"0x".equalsIgnoreCase(trimmed) && !isEip7702DelegatedEoa(trimmed);
     }
 
     public static String formatBytecodePrefix(String bytecode) {
-        if (bytecode == null || bytecode.isBlank()) {
+        if (bytecode == null || bytecode.isBlank() || isEip7702DelegatedEoa(bytecode)) {
             return "0x";
         }
         String trimmed = bytecode.trim();

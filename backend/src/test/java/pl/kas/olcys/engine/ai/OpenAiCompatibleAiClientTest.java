@@ -107,4 +107,46 @@ class OpenAiCompatibleAiClientTest {
         assertThat(classified).isEqualTo("TRANSACTIONAL_CONTEXT");
         okServer.verify();
     }
+
+    @Test
+    void shouldSanitizeMisleadingPit38PercentageAndFalsePositivePhrasesFromSmallLlm() {
+        String raw1 = "Dla podmiotu Jan Kowalski potwierdzono 2 portfele o wolumenie 176 600,00 PLN. "
+                + "Oceniono ryzyko podatkowe PIT-38 na 100%, co wynika z niewielkiej liczby sygnałów False Positives.";
+        String sanitized1 = OpenAiCompatibleAiClient.sanitizeExecutiveSummaryPl(raw1);
+        assertThat(sanitized1)
+                .doesNotContain("na 100%")
+                .doesNotContain("niewielkiej liczby sygnałów False Positives")
+                .contains("Stwierdzono podwyższone ryzyko podatkowe PIT-38 wymagające weryfikacji zeznania rocznego.")
+                .contains("odrzucenia adresów instytucjonalnych przez Firewall False Positives");
+
+        String raw2 = "Analiza podnosi ryzyko podatkowe PIT-38 podmiotu do poziomu 100%.";
+        assertThat(OpenAiCompatibleAiClient.sanitizeExecutiveSummaryPl(raw2))
+                .isEqualTo("Analiza Stwierdzono podwyższone ryzyko podatkowe PIT-38 wymagające weryfikacji zeznania rocznego.");
+
+        String raw3 = "Ryzyko podatkowe PIT-38 wynosi 85%.";
+        assertThat(OpenAiCompatibleAiClient.sanitizeExecutiveSummaryPl(raw3))
+                .isEqualTo("Stwierdzono podwyższone ryzyko podatkowe PIT-38 wymagające weryfikacji zeznania rocznego.");
+
+        // Verify generateExecutiveSummaryPl applies sanitizeExecutiveSummaryPl to live mock responses
+        RestClient.Builder summaryBuilder = RestClient.builder();
+        MockRestServiceServer summaryServer = MockRestServiceServer.bindTo(summaryBuilder).build();
+        summaryServer.expect(requestTo("http://ollama:11434/v1/chat/completions"))
+                .andRespond(withSuccess(
+                        "{\"choices\":[{\"message\":{\"content\":\"Podmiot Jan Kowalski: 2 portfele, 176 600,00 PLN. Oceniono ryzyko PIT-38 na 100%.\"}}]}",
+                        MediaType.APPLICATION_JSON
+                ));
+
+        AiProperties props = new AiProperties("ollama", "http://ollama:11434/v1", "llama3.2:latest", false, 5);
+        OpenAiCompatibleAiClient summaryClient = new OpenAiCompatibleAiClient(
+                props, localRules, summaryBuilder, objectMapper
+        );
+        String summary = summaryClient.generateExecutiveSummaryPl(
+                "Jan Kowalski", List.of(), List.of(), List.of(), 176600.0
+        );
+        assertThat(summaryClient.wasLastCallFallback()).isFalse();
+        assertThat(summary)
+                .doesNotContain("na 100%")
+                .contains("Stwierdzono podwyższone ryzyko podatkowe PIT-38 wymagające weryfikacji zeznania rocznego.");
+        summaryServer.verify();
+    }
 }

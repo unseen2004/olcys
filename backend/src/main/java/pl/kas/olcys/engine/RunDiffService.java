@@ -1,5 +1,7 @@
 package pl.kas.olcys.engine;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import pl.kas.olcys.api.dto.AddressFindingDto;
 import pl.kas.olcys.api.dto.AddressScoreChangeDto;
@@ -8,6 +10,8 @@ import pl.kas.olcys.api.dto.CashOutSignalDto;
 import pl.kas.olcys.api.dto.EvidenceArtifactDto;
 import pl.kas.olcys.api.dto.RunDiffDto;
 import pl.kas.olcys.api.dto.WalletRotationEventDto;
+import pl.kas.olcys.domain.AnalysisRunEntity;
+import pl.kas.olcys.domain.AnalysisRunRepository;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -16,6 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,6 +30,55 @@ import java.util.stream.Collectors;
  */
 @Component
 public class RunDiffService {
+
+    private final AnalysisRunRepository analysisRunRepository;
+    private final ObjectMapper objectMapper;
+
+    public RunDiffService() {
+        this.analysisRunRepository = null;
+        this.objectMapper = null;
+    }
+
+    @Autowired
+    public RunDiffService(AnalysisRunRepository analysisRunRepository, ObjectMapper objectMapper) {
+        this.analysisRunRepository = analysisRunRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    public RunDiffDto compareRuns(String subjectId, String fromRunId, String toRunId) {
+        if (analysisRunRepository == null || objectMapper == null) {
+            throw new IllegalStateException("RunDiffService wymaga AnalysisRunRepository i ObjectMapper do porównywania po ID.");
+        }
+        List<AnalysisRunEntity> orderedRuns = analysisRunRepository.findBySubjectIdOrderByRunNumberAsc(subjectId);
+        if (orderedRuns.size() < 2 && (fromRunId == null || fromRunId.isBlank() || toRunId == null || toRunId.isBlank())) {
+            throw new IllegalArgumentException(
+                    "Porównanie zmian w czasie wymaga co najmniej 2 uruchomień analizy dla podmiotu " + subjectId
+            );
+        }
+        AnalysisRunEntity fromEntity = (fromRunId == null || fromRunId.isBlank())
+                ? orderedRuns.get(orderedRuns.size() - 2)
+                : findRunForSubject(subjectId, fromRunId);
+        AnalysisRunEntity toEntity = (toRunId == null || toRunId.isBlank())
+                ? orderedRuns.get(orderedRuns.size() - 1)
+                : findRunForSubject(subjectId, toRunId);
+
+        try {
+            AnalysisRunDto fromDto = objectMapper.readValue(fromEntity.getResultJson(), AnalysisRunDto.class);
+            AnalysisRunDto toDto = objectMapper.readValue(toEntity.getResultJson(), AnalysisRunDto.class);
+            return compareRuns(fromDto, toDto);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Nie udało się zdeserializować analizy do porównania diff: " + ex.getMessage(), ex);
+        }
+    }
+
+    private AnalysisRunEntity findRunForSubject(String subjectId, String runId) {
+        AnalysisRunEntity entity = analysisRunRepository.findById(runId)
+                .orElseThrow(() -> new NoSuchElementException("Nie znaleziono uruchomienia analizy o ID: " + runId));
+        if (!subjectId.equals(entity.getSubjectId())) {
+            throw new IllegalArgumentException("Uruchomienie " + runId + " nie należy do podmiotu " + subjectId);
+        }
+        return entity;
+    }
 
     public RunDiffDto compareRuns(AnalysisRunDto fromRun, AnalysisRunDto toRun) {
         Map<String, AddressFindingDto> fromConfirmed = indexConfirmedByAddress(fromRun);
@@ -104,15 +158,25 @@ public class RunDiffService {
                     continue;
                 }
 
-                Set<String> keys1 = addrs1.stream().map(RunDiffService::addressKey).collect(Collectors.toSet());
-                Set<String> keys2 = addrs2.stream().map(RunDiffService::addressKey).collect(Collectors.toSet());
+                Set<String> allProfileKeysInFrom = new LinkedHashSet<>();
+                for (EvidenceArtifactDto ef : fromEvidences) {
+                    if (sameWeb2ProfileOrUrl(e1, ef)) {
+                        confirmedFindingsInEvidence(ef, fromConfirmed).forEach(f -> allProfileKeysInFrom.add(addressKey(f)));
+                    }
+                }
+                Set<String> allProfileKeysInTo = new LinkedHashSet<>();
+                for (EvidenceArtifactDto et : toEvidences) {
+                    if (sameWeb2ProfileOrUrl(e2, et)) {
+                        confirmedFindingsInEvidence(et, toConfirmed).forEach(f -> allProfileKeysInTo.add(addressKey(f)));
+                    }
+                }
 
                 for (AddressFindingDto oldFinding : addrs1) {
-                    if (keys2.contains(addressKey(oldFinding))) {
+                    if (allProfileKeysInTo.contains(addressKey(oldFinding))) {
                         continue;
                     }
                     for (AddressFindingDto newFinding : addrs2) {
-                        if (keys1.contains(addressKey(newFinding))) {
+                        if (allProfileKeysInFrom.contains(addressKey(newFinding))) {
                             continue;
                         }
                         if (!oldFinding.network().equalsIgnoreCase(newFinding.network())) {
@@ -160,8 +224,8 @@ public class RunDiffService {
         }
         String url1 = normalizeUrl(e1.url());
         String url2 = normalizeUrl(e2.url());
-        if (!url1.isEmpty() && url1.equalsIgnoreCase(url2)) {
-            return true;
+        if (!url1.isEmpty() && !url2.isEmpty()) {
+            return url1.equalsIgnoreCase(url2);
         }
         return "OWN_PROFILE_VERIFIED".equalsIgnoreCase(e1.contextClassification())
                 && "OWN_PROFILE_VERIFIED".equalsIgnoreCase(e2.contextClassification());

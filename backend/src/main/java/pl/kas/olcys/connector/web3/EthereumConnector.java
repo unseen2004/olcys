@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import pl.kas.olcys.api.dto.AnalysisMode;
+import pl.kas.olcys.engine.FalsePositiveFirewall;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -82,27 +83,58 @@ public class EthereumConnector implements Web3Connector {
         String explorerTag = fallbackTag;
         int txCount = 0;
 
+        boolean knownSmartContract = FalsePositiveFirewall.isSmartContractBytecode(bytecode);
+        if (knownSmartContract && hasText(explorerTag)) {
+            return new RawOnChainProfile(
+                    address,
+                    NETWORK,
+                    bytecode,
+                    0,
+                    0.0,
+                    0.0,
+                    NATIVE_SYMBOL,
+                    0.0,
+                    0.0,
+                    explorerTag,
+                    List.of()
+            );
+        }
+
         Optional<String> blockscoutBody = Web3ConnectorSupport.safeGet(
                 restClient, BLOCKSCOUT_ADDR_URL + address, log);
         List<RawTransaction> txs = List.of();
         if (blockscoutBody.isPresent()) {
             try {
                 JsonNode root = objectMapper.readTree(blockscoutBody.get());
-                String name = root.path("name").asText("");
-                if (!name.isBlank() && (explorerTag == null || explorerTag.isBlank())) {
-                    explorerTag = name;
+                if (!hasText(explorerTag)) {
+                    String name = root.path("name").asText("");
+                    if (hasText(name)) {
+                        explorerTag = name;
+                    } else {
+                        explorerTag = extractFirstBlockscoutTag(root);
+                    }
                 }
-                if (root.path("is_contract").asBoolean(false) && "0x".equals(bytecode)) {
+                boolean isEip7702 = "eip7702".equalsIgnoreCase(root.path("proxy_type").asText(""))
+                        || FalsePositiveFirewall.isEip7702DelegatedEoa(bytecode);
+                if (root.path("is_contract").asBoolean(false) && !isEip7702 && "0x".equals(bytecode)) {
                     bytecode = Web3ConnectorSupport.SAMPLE_CONTRACT_BYTECODE;
                 }
-                int blockscoutTx = root.path("transactions_count").asInt(0);
+                int blockscoutTx = parseSafeTxCount(root.path("transactions_count"));
                 if (blockscoutTx > 0) {
                     txCount = blockscoutTx;
                 }
             } catch (Exception ex) {
                 log.debug("Failed to parse Blockscout address JSON for {}: {}", address, ex.getMessage());
             }
-            txs = fetchBlockscoutTransactions(address);
+
+            if (!FalsePositiveFirewall.isSmartContractBytecode(bytecode)) {
+                if (txCount == 0) {
+                    txCount = fetchBlockscoutCountersTxCount(address);
+                }
+                if (txCount <= FalsePositiveFirewall.CUSTODIAL_TX_THRESHOLD) {
+                    txs = fetchBlockscoutTransactions(address);
+                }
+            }
         }
 
         if (txCount == 0 && !txs.isEmpty()) {
@@ -125,6 +157,60 @@ public class EthereumConnector implements Web3Connector {
                 explorerTag,
                 txs
         );
+    }
+
+    private int fetchBlockscoutCountersTxCount(String address) {
+        Optional<String> countersBody = Web3ConnectorSupport.safeGet(
+                restClient, BLOCKSCOUT_ADDR_URL + address + "/counters", log);
+        if (countersBody.isEmpty()) {
+            return 0;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(countersBody.get());
+            return parseSafeTxCount(root.path("transactions_count"));
+        } catch (Exception ex) {
+            log.debug("Failed to parse Blockscout counters JSON for {}: {}", address, ex.getMessage());
+            return 0;
+        }
+    }
+
+    private static int parseSafeTxCount(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return 0;
+        }
+        try {
+            long val = node.isNumber() ? node.asLong(0L) : Long.parseLong(node.asText("0").trim());
+            if (val <= 0L) {
+                return 0;
+            }
+            return val > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) val;
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private static String extractFirstBlockscoutTag(JsonNode root) {
+        for (JsonNode tagNode : root.path("public_tags")) {
+            String displayName = tagNode.path("display_name").asText("");
+            if (hasText(displayName)) {
+                return displayName.trim();
+            }
+            String label = tagNode.path("label").asText("");
+            if (hasText(label)) {
+                return label.trim();
+            }
+        }
+        for (JsonNode tagNode : root.path("metadata").path("tags")) {
+            String name = tagNode.path("name").asText("");
+            if (hasText(name)) {
+                return name.trim();
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasText(String s) {
+        return s != null && !s.isBlank();
     }
 
     private String fetchEthCode(String address) {
@@ -261,7 +347,7 @@ public class EthereumConnector implements Web3Connector {
                         6600.0,
                         "USDT",
                         26400.0,
-                        "Tether: USDT ERC-20 (STABLECOIN)"
+                        "Tether: USDT ERC-20 — wywołanie kontraktu tokena (STABLECOIN)"
                 ),
                 new RawTransaction(
                         "0x5e2180b62b5f774512d8266e550482b5f54637c8e9f011223344556677889905",
@@ -366,7 +452,7 @@ public class EthereumConnector implements Web3Connector {
                         8250.0,
                         "USDT",
                         33000.0,
-                        "Tether: USDT ERC-20 (STABLECOIN)"
+                        "Tether: USDT ERC-20 — wywołanie kontraktu tokena (STABLECOIN)"
                 ),
                 new RawTransaction(
                         "0xd6a9083ea3d7ffcd9a50aee6dd8ca03d7dce1f4066778899aabbccddeeff001113",
@@ -447,7 +533,7 @@ public class EthereumConnector implements Web3Connector {
                         22000.0,
                         "USDT",
                         88000.0,
-                        "Tether: USDT ERC-20 (STABLECOIN)"
+                        "Tether: USDT ERC-20 — wywołanie kontraktu tokena (STABLECOIN)"
                 ),
                 new RawTransaction(
                         "0xf50011223344556677889900aabbccddeeff00112233445566778899aabbcc05",

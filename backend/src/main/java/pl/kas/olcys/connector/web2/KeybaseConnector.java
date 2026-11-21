@@ -133,13 +133,14 @@ public class KeybaseConnector implements Web2Connector {
                 summary.append(" | Przypięte adresy krypto: ").append(String.join(" | ", cryptoAddresses));
             }
 
+            String snippet = Web2ConnectorSupport.truncateSnippet(summary.toString());
             return Optional.of(new RawEvidence(
                     name(),
                     "IDENTITY_PROOF",
                     "https://keybase.io/" + username,
                     Instant.now(),
-                    Web2ConnectorSupport.sha256(rawBody),
-                    Web2ConnectorSupport.truncateSnippet(summary.toString()),
+                    Web2ConnectorSupport.sha256(snippet),
+                    snippet,
                     handle,
                     "OWN_PROFILE_VERIFIED"
             ));

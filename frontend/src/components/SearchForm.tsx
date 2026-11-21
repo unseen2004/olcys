@@ -266,8 +266,6 @@ export const SearchForm: React.FC<SearchFormProps> = ({
       latestRun?.mode ?? (subject.displayName.toLowerCase().includes('kowalski') ? 'SYNTHETIC' : mode);
     await onTriggerFollowUpRun(subject.id, {
       mode: runMode,
-      sources: selectedSources.length > 0 ? selectedSources : ['GitHub', 'Reddit', 'WaybackArchive', 'ENS', 'Synthetic'],
-      networks: selectedNetworks.length > 0 ? selectedNetworks : ['ETH', 'BTC', 'TRON'],
       snapshotStep: 2,
     });
   };

@@ -17,7 +17,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Passive OSINT connector for public Reddit submissions and search listings.
+ * Passive OSINT connector for public Reddit submissions and search listings,
+ * with automatic fallback to the public PullPush Reddit archive API on HTTP 403/blocks.
  */
 @Component
 public class RedditConnector implements Web2Connector {
@@ -59,28 +60,32 @@ public class RedditConnector implements Web2Connector {
             if (handleCount++ >= MAX_QUERIES) {
                 break;
             }
-            String url = "https://www.reddit.com/user/" + Web2ConnectorSupport.urlEncode(handle)
-                    + "/submitted.json?limit=10";
-            fetchListing(url, handle, evidences, seenUrls);
+            String encoded = Web2ConnectorSupport.urlEncode(handle);
+            String primaryUrl = "https://www.reddit.com/user/" + encoded + "/submitted.json?limit=10";
+            String fallbackUrl = "https://api.pullpush.io/reddit/search/submission/?author=" + encoded + "&size=5";
+            fetchListing(primaryUrl, fallbackUrl, handle, evidences, seenUrls);
         }
 
         List<String> queries = Web2ConnectorSupport.extractNonEmptyValues(identifiers, MAX_QUERIES);
         for (String query : queries) {
-            String url = "https://www.reddit.com/search.json?q=" + Web2ConnectorSupport.urlEncode(query)
-                    + "&limit=5";
-            fetchListing(url, query, evidences, seenUrls);
+            String encoded = Web2ConnectorSupport.urlEncode(query);
+            String primaryUrl = "https://www.reddit.com/search.json?q=" + encoded + "&limit=5";
+            String fallbackUrl = "https://api.pullpush.io/reddit/search/submission/?q=" + encoded + "&size=5";
+            fetchListing(primaryUrl, fallbackUrl, query, evidences, seenUrls);
         }
 
         return List.copyOf(evidences);
     }
 
     private void fetchListing(
-            String apiUrl,
+            String primaryUrl,
+            String fallbackUrl,
             String matchedIdentifier,
             List<RawEvidence> sink,
             Set<String> seenUrls
     ) {
-        Web2ConnectorSupport.safeGet(restClient, apiUrl, log, "application/json")
+        Web2ConnectorSupport.safeGet(restClient, primaryUrl, log, "application/json")
+                .or(() -> Web2ConnectorSupport.safeGet(restClient, fallbackUrl, log, "application/json"))
                 .ifPresent(rawBody -> parseListing(rawBody, matchedIdentifier, sink, seenUrls));
     }
 
@@ -91,33 +96,36 @@ public class RedditConnector implements Web2Connector {
             Set<String> seenUrls
     ) {
         try {
-            JsonNode children = objectMapper.readTree(rawBody).path("data").path("children");
-            if (!children.isArray() || children.isEmpty()) {
+            JsonNode root = objectMapper.readTree(rawBody);
+            JsonNode dataNode = root.path("data");
+            boolean pullPushArray = dataNode.isArray();
+            JsonNode items = pullPushArray ? dataNode : dataNode.path("children");
+            if (!items.isArray() || items.isEmpty()) {
                 return;
             }
 
-            String sha256 = Web2ConnectorSupport.sha256(rawBody);
             Instant now = Instant.now();
             int added = 0;
-            for (JsonNode child : children) {
+            for (JsonNode item : items) {
                 if (added >= 3) {
                     break;
                 }
-                JsonNode post = child.path("data");
+                JsonNode post = pullPushArray ? item : (item.has("data") ? item.path("data") : item);
                 String title = post.path("title").asText("");
                 String selftext = post.path("selftext").asText("");
                 String body = post.path("body").asText("");
                 String subreddit = post.path("subreddit").asText("");
                 String permalink = post.path("permalink").asText("");
+                String fullLink = post.path("full_link").asText("");
 
-                String combined = String.format("r/%s: %s %s %s", subreddit, title, selftext, body).trim();
+                String combined = subreddit.isBlank()
+                        ? String.format("%s %s %s", title, selftext, body).trim()
+                        : String.format("r/%s: %s %s %s", subreddit, title, selftext, body).trim();
                 if (combined.length() <= 4) {
                     continue;
                 }
 
-                String postUrl = permalink.isBlank()
-                        ? "https://www.reddit.com"
-                        : "https://www.reddit.com" + permalink;
+                String postUrl = resolvePostUrl(permalink, fullLink);
                 if (!seenUrls.add(postUrl)) {
                     continue;
                 }
@@ -127,14 +135,15 @@ public class RedditConnector implements Web2Connector {
                     case "TRANSACTIONAL_CONTEXT" -> "P2P_MARKETPLACE";
                     default -> "FORUM";
                 };
+                String snippet = Web2ConnectorSupport.truncateSnippet(combined);
 
                 sink.add(new RawEvidence(
                         name(),
                         category,
                         postUrl,
                         now,
-                        sha256,
-                        Web2ConnectorSupport.truncateSnippet(combined),
+                        Web2ConnectorSupport.sha256(snippet),
+                        snippet,
                         matchedIdentifier,
                         context
                 ));
@@ -143,5 +152,21 @@ public class RedditConnector implements Web2Connector {
         } catch (Exception ex) {
             log.debug("Failed to parse Reddit listing JSON: {}", ex.getMessage());
         }
+    }
+
+    private static String resolvePostUrl(String permalink, String fullLink) {
+        if (permalink != null && !permalink.isBlank()) {
+            String trimmed = permalink.trim();
+            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                return trimmed;
+            }
+            return trimmed.startsWith("/")
+                    ? "https://www.reddit.com" + trimmed
+                    : "https://www.reddit.com/" + trimmed;
+        }
+        if (fullLink != null && !fullLink.isBlank()) {
+            return fullLink.trim();
+        }
+        return "https://www.reddit.com";
     }
 }

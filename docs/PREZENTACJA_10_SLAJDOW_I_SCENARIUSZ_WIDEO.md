@@ -13,7 +13,7 @@
 | **Jakość Wskaźnika Pewności i ograniczania błędnych przypisań** | **25%** | 100% deterministyczny Confidence Score (`85/70/50/20/0%` + synergia `+15 pp` na niezależnych domenach) + 3-warstwowy Firewall FP (`eth_getCode != 0x`, 83 tagi w `entity-tags.json`, `txCount > 10 000`) z flagą `interactionRecorded = true`. | Slajdy 4, 5; Wideo `01:05–01:35` |
 | **Przejrzystość raportu, źródeł i uzasadnienia wyników** | **20%** | Graf warstwowy `@xyflow/react` z inspektorem Chain-of-Custody (URL, UTC, `SHA-256`) oraz 3-strefowy raport (UI + Apache PDFBox 3.0.3 PL + JSON) czytelny także dla osób nietechnicznych. | Slajdy 6, 7; Wideo `00:50–01:05` i `01:35–02:05` |
 | **Pomysł i oryginalność rozwiązania** | **15%** | Cykliczne śledzenie zmian w czasie (**wykrywanie podmiany portfela v1 → v2** z czerwonym alertem), **Reverse OSINT** (start od adresu ETH do Telegram/Reddit/TRON), detekcja cyklicznych wypłat OTC. | Slajd 8; Wideo `02:05–02:35` |
-| **Potencjał wdrożeniowy i architektura techniczna** | **15%** | Monorepo **Java 21 (Virtual Threads) + Spring Boot 3.4 + PostgreSQL 16 + Flyway + React 19**, pluginowe `Web2Connector`/`Web3Connector`, wymienny lokalny `AiClient` (`OLCYS_AI_ALLOW_EXTERNAL=false`, Ollama/`local-rules`), **0 bibliotek GPL/AGPL**, Swagger UI, `docker compose up`. | Slajdy 9, 10; Wideo `00:00–00:25` i `02:35–03:00` |
+| **Potencjał wdrożeniowy i architektura techniczna** | **15%** | Monorepo **Java 21 (Virtual Threads) + Spring Boot 3.4 + PostgreSQL 16 + Flyway + React 19**, pluginowe `Web2Connector`/`Web3Connector` (6 Web2 / 3 Web3), wymienny lokalny `AiClient` (`OLCYS_AI_ALLOW_EXTERNAL=false`, Ollama/`local-rules`), **0 bibliotek GPL/AGPL**, Swagger UI, `docker compose up`. | Slajdy 9, 10; Wideo `00:00–00:25` i `02:35–03:00` |
 
 ---
 
@@ -54,11 +54,12 @@
 - **Ważna reguła KAS:** Dla odrzuconych CEX/CASP zachowujemy **`interactionRecorded = true`** — giełda nie należy do podatnika, ale przelew na nią jest śladem Cash-Out!
 
 ### Slajd 6 — Analiza On-Chain, detekcja Fiat Cash-Out i Graf Dowodowy *(Waga: 20% + 25%)*
-- **4 detektory wyjścia do walut tradycyjnych:**
+- **5 klas detektorów wyjścia do walut tradycyjnych:**
   - `CEX_OFFRAMP` (przelew na Binance, Kraken, Zondacrypto)
   - `STABLECOIN_CONVERSION` (swapy i transfery USDT / USDC / DAI)
-  - `P2P_OR_GATEWAY` (korelacja daty ogłoszenia P2P z transakcją ±48h + bramki Ramp/Bitomat/Kantor OTC)
+  - `P2P_OR_GATEWAY` (korelacja daty ogłoszenia P2P z transakcją ±72h + bramki Ramp/Bitomat/Kantor OTC)
   - `RECURRING_CASHOUT` (cykliczne wypłaty zbliżonych transz, np. ~5 000 USDT tygodniowo)
+  - `AML_STRUCTURING_OR_2HOP` (wieloetapowe wyjście / dzielenie transz 3,5–25 tys. PLN)
 - **Wizualizacja dla analityka:** Interaktywny graf `@xyflow/react` (4 kolumny od podmiotu do Cash-Out) + wykres przepływów PLN w `Recharts`.
 
 ### Slajd 7 — 3-strefowy raport OSINT (UI + PDFBox + JSON) *(Waga: 20%)*
@@ -69,12 +70,12 @@
 
 ### Slajd 8 — Wyróżniki ponad minimum: Podmiana portfela (Diff v1→v2) i Reverse OSINT *(Waga: 15%)*
 - **Monitoring zmian w czasie (`GET /api/subjects/{id}/diff`):** Porównanie cyklicznych analiz zapisanych w PostgreSQL. Wykrywa podmianę portfela na tym samym profilu Web2 (`GitHub`: `0x71C7...76F` → `0xd8dA...045`), wylicza przyrost wolumenu (`+57 000 PLN`) i nowe sygnały Cash-Out.
-- **Reverse OSINT (Scenariusz 2):** Start od samego adresu ETH ujawnia powiązania na Telegram OTC i Reddit, odkrywa drugi portfel w sieci **TRON (USDT TRC-20)** i wykrywa wszystkie 4 klasy Cash-Out.
+- **Reverse OSINT (Scenariusz 2):** Start od samego adresu ETH ujawnia powiązania na Telegram OTC i Reddit, odkrywa drugi portfel w sieci **TRON (USDT TRC-20)** i wykrywa 5 klas Cash-Out.
 - **Test negatywny (Scenariusz 3):** Odporność na masowe komentarze giveaway (`20%`) i zbiórki charytatywne/miksery (`0%`).
 
 ### Slajd 9 — Architektura wdrożeniowa On-Premise i bezpieczeństwo danych *(Waga: 15%)*
 - **Stack korporacyjny preferowany przez KAS:** Monorepo **Java 21 LTS (Virtual Threads) + Spring Boot 3.4 + PostgreSQL 16 + Flyway + React 19 + TypeScript**.
-- **Architektura pluginowa:** Nowe źródło Web2 = implementacja `Web2Connector`; nowa sieć blockchain = implementacja `Web3Connector`. Równoległe zapytania na Virtual Threads z twardym timeoutem `5 s`.
+- **Architektura pluginowa:** Nowe źródło Web2 = implementacja `Web2Connector` (6 wbudowanych); nowa sieć blockchain = implementacja `Web3Connector` (ETH, BTC, TRON). Równoległe zapytania na Virtual Threads z twardym timeoutem `5 s`.
 - **Zero wycieku danych & wymienny AI (`AiClient`):** Domyślny `local-rules` lub lokalna **Ollama** (`http://ollama:11434/v1`), twarda blokada zewnętrznych API (`OLCYS_AI_ALLOW_EXTERNAL=false`, status `externalDataTransfer: false`).
 - **Audyt Open Source:** **0 bibliotek GPL/AGPL** (Apache 2.0, MIT, BSD, ISC, EPL, PostgreSQL; brak iText/AGPL).
 
@@ -93,7 +94,7 @@
 
 | Przedział czasu | Czas trwania | Akcja na ekranie (UI / Terminal / API) | Narracja lektora (do przeczytania wyraźnym tempem) | Pokryte kryterium KAS |
 | :---: | :---: | :--- | :--- | :--- |
-| **00:00 – 00:18** | 18 s | Ekran startowy OŁCyŚ (`http://localhost:5173`). Najazd kursorem na zielony pasek w nagłówku: `AI: Lokalny On-Premise \| Zero transferu zewnętrznego` oraz metryki `Java 21 \| Virtual Threads: ON \| DB: UP \| Konektory: 5 Web2 / 3 Web3`. | *„Oto OŁCyŚ — Osintowy Łapacz Cyfrowych Śladów dla Krajowej Administracji Skarbowej. System rozwiązuje problem nieujawnionych przychodów z kryptowalut w zeznaniach PIT-38. Całość działa w architekturze on-premise na Java 21, Spring Boot i PostgreSQL — bez wysyłania jakichkolwiek danych poza środowisko KAS.”* | Architektura (15%) + Zgodność (25%) |
+| **00:00 – 00:18** | 18 s | Ekran startowy OŁCyŚ (`http://localhost:5173`). Najazd kursorem na zielony pasek w nagłówku: `AI: Lokalny On-Premise \| Zero transferu zewnętrznego` oraz metryki `Java 21 \| Virtual Threads: ON \| DB: UP \| Konektory: 6 Web2 / 3 Web3`. | *„Oto OŁCyŚ — Osintowy Łapacz Cyfrowych Śladów dla Krajowej Administracji Skarbowej. System rozwiązuje problem nieujawnionych przychodów z kryptowalut w zeznaniach PIT-38. Całość działa w architekturze on-premise na Java 21, Spring Boot i PostgreSQL — bez wysyłania jakichkolwiek danych poza środowisko KAS.”* | Architektura (15%) + Zgodność (25%) |
 | **00:18 – 00:40** | 22 s | Lewy panel `SearchForm.tsx`: pokazanie listy rozwijanej typów identyfikatorów (`NICK`, `FULL_NAME`, `EMAIL`, `TELEGRAM_ID`, `SOCIAL_LOGIN`, `CRYPTO_ADDRESS`), trybów (`Hybrydowy`, `Live OSINT`, `Scenariusz Walidacyjny`), źródeł Web2 i sieci `ETH/BTC/TRON`. Kliknięcie przycisku **„Uruchom scenariusz”** na karcie **Scenariusza 1 (`Jan Kowalski / @krypto_janek`)**. | *„Analityk może rozpocząć badanie od nicka, imienia i nazwiska, e-maila, komunikatora albo bezpośrednio od adresu krypto w trybie Reverse OSINT. System odpytuje wyłącznie legalne, pasywne źródła publiczne. Uruchamiamy Scenariusz 1 dla podmiotu @krypto_janek — Java 21 Virtual Threads w ułamku sekundy zbierają ślady równolegle.”* | Parametry i OSINT (25%) |
 | **00:40 – 01:05** | 25 s | Zakładka **„Graf powiązań” (`EvidenceGraph.tsx`)**. Pokazanie 4 warstw od lewej do prawej. Kliknięcie węzła `GitHub` lub `0x71C7...76F`, aby otworzyć prawy **Inspektor Dowodowy KAS**; wskazanie URL, timestampu UTC, skrótu `SHA-256` i cytatu. | *„W zakładce Graf powiązań widzimy pełną ścieżkę od identyfikatorów przez źródła Web2 po portfele i węzły Cash-Out. Kliknięcie dowolnego węzła otwiera Inspektor Dowodowy: każdy ślad ma zabezpieczony dokładny adres URL, datę UTC i kryptograficzny skrót SHA-256 treści dla zachowania łańcucha dowodowego Chain-of-Custody.”* | Przejrzystość i źródła (20%) |
 | **01:05 – 01:35** | 30 s | Przełączenie na zakładkę **„Portfele & Firewall FP” (`AddressCards.tsx`)**. Wskazanie paska **`100%`** dla `0x71C7...76F` i tabeli rozbicia (`+85 pkt GitHub`, `+15 pkt Synergia z KantorP2P.pl`) oraz portfela BTC (`70%`). Przewinięcie w dół do sekcji **„Odrzucone trafienia — Firewall False Positives”**: pokazanie `Binance 14` (`0%` + badge **`Odnotowano interakcję on-chain`**) oraz `Uniswap V3: SwapRouter` (`0%` + `eth_getCode bytecode != 0x`). | *„Przejdźmy do deterministycznego Wskaźnika Pewności i Firewalla False Positives. Portfel ETH uzyskał 100%, ponieważ pojawił się zarówno na autorskim profilu GitHub — 85% — jak i w ogłoszeniu P2P na drugiej niezależnej domenie — premia synergii +15 punktów. Poniżej Firewall automatycznie odrzucił z wynikiem 0% adres giełdy Binance oraz smart kontrakt Uniswap V3 wykryty przez eth_getCode — przy czym dla giełdy zachował flagę odnotowanej interakcji on-chain.”* | Confidence Score i Firewall FP (25%) |

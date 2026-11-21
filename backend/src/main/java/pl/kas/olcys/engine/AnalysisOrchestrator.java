@@ -168,6 +168,15 @@ public class AnalysisOrchestrator {
                 : nextRunNumber;
         List<String> sources = request != null ? request.sources() : List.of();
         List<String> networks = request != null ? request.networks() : List.of();
+        if (!existingRuns.isEmpty()) {
+            AnalysisRunDto lastRun = readRunDto(existingRuns.get(existingRuns.size() - 1).getResultJson());
+            if ((sources == null || sources.isEmpty()) && lastRun.activeSources() != null) {
+                sources = lastRun.activeSources();
+            }
+            if ((networks == null || networks.isEmpty()) && lastRun.activeNetworks() != null) {
+                networks = lastRun.activeNetworks();
+            }
+        }
         List<IdentifierDto> identifiers = readIdentifiers(subject.getIdentifiersJson());
 
         return executeAndPersistRun(
@@ -460,26 +469,53 @@ public class AnalysisOrchestrator {
             int snapshotStep,
             List<String> activeSources
     ) {
-        List<Web2Connector> selectedConnectors = new ArrayList<>();
+        Set<String> toggleableLiveConnectors = new LinkedHashSet<>();
+        Web2Connector syntheticConnector = null;
         for (Web2Connector connector : web2Connectors) {
-            if (!connector.supports(mode)) {
-                continue;
-            }
             if ("Synthetic".equalsIgnoreCase(connector.name())) {
-                selectedConnectors.add(connector);
-            } else if (activeSources.isEmpty()
-                    || containsIgnoreCase(activeSources, connector.name())
-                    || containsIgnoreCase(activeSources, "ALL")) {
-                selectedConnectors.add(connector);
+                syntheticConnector = connector;
+            } else {
+                toggleableLiveConnectors.add(connector.name().trim().toLowerCase(Locale.ROOT));
             }
         }
 
+        boolean syntheticRequested = activeSources.isEmpty()
+                || containsIgnoreCase(activeSources, "ALL")
+                || containsIgnoreCase(activeSources, "Synthetic")
+                || activeSources.stream().anyMatch(
+                        s -> !toggleableLiveConnectors.contains(s.trim().toLowerCase(Locale.ROOT)));
+
         List<RawEvidence> collected = new ArrayList<>();
-        if (!selectedConnectors.isEmpty()) {
+        boolean skipExternalLiveDueToSyntheticMatch = false;
+        if (syntheticConnector != null && syntheticConnector.supports(mode) && syntheticRequested) {
+            List<RawEvidence> syntheticMatches = syntheticConnector.search(identifiers, snapshotStep);
+            if (syntheticMatches != null && !syntheticMatches.isEmpty()) {
+                collected.addAll(syntheticMatches);
+                if (mode == AnalysisMode.HYBRID) {
+                    skipExternalLiveDueToSyntheticMatch = true;
+                }
+            }
+        }
+
+        List<Web2Connector> selectedLiveConnectors = new ArrayList<>();
+        if (!skipExternalLiveDueToSyntheticMatch) {
+            for (Web2Connector connector : web2Connectors) {
+                if ("Synthetic".equalsIgnoreCase(connector.name()) || !connector.supports(mode)) {
+                    continue;
+                }
+                if (activeSources.isEmpty()
+                        || containsIgnoreCase(activeSources, connector.name())
+                        || containsIgnoreCase(activeSources, "ALL")) {
+                    selectedLiveConnectors.add(connector);
+                }
+            }
+        }
+
+        if (!selectedLiveConnectors.isEmpty()) {
             long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(CONNECTOR_TIMEOUT_SECONDS);
             try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 Map<String, Future<List<RawEvidence>>> futures = new LinkedHashMap<>();
-                for (Web2Connector connector : selectedConnectors) {
+                for (Web2Connector connector : selectedLiveConnectors) {
                     futures.put(connector.name(), executor.submit(() -> connector.search(identifiers, snapshotStep)));
                 }
                 for (Map.Entry<String, Future<List<RawEvidence>>> entry : futures.entrySet()) {
@@ -497,18 +533,23 @@ public class AnalysisOrchestrator {
             }
         }
 
-        // Filter collected evidences by requested sourceName unless "Synthetic" or "ALL" is selected
         boolean filterBySourceName = !activeSources.isEmpty()
-                && !containsIgnoreCase(activeSources, "Synthetic")
                 && !containsIgnoreCase(activeSources, "ALL");
+        boolean syntheticSelected = containsIgnoreCase(activeSources, "Synthetic");
 
         Map<String, RawEvidence> deduplicated = new LinkedHashMap<>();
         for (RawEvidence ev : collected) {
             if (ev == null) {
                 continue;
             }
-            if (filterBySourceName && !containsIgnoreCase(activeSources, ev.sourceName())) {
-                continue;
+            if (filterBySourceName) {
+                String evSource = ev.sourceName() == null ? "" : ev.sourceName().trim();
+                boolean explicitlySelected = containsIgnoreCase(activeSources, evSource);
+                boolean isLiveToggleable = toggleableLiveConnectors.contains(evSource.toLowerCase(Locale.ROOT));
+                boolean allowedSyntheticPortal = !isLiveToggleable && syntheticSelected;
+                if (!explicitlySelected && !allowedSyntheticPortal) {
+                    continue;
+                }
             }
             String dedupKey = (ev.sourceName() + "|" + ev.url() + "|" + ev.sha256()).toLowerCase(Locale.ROOT);
             deduplicated.putIfAbsent(dedupKey, ev);
@@ -732,11 +773,15 @@ public class AnalysisOrchestrator {
 
         Map<String, CashOutSignalDto> cashOutGrouped = new LinkedHashMap<>();
         Map<String, Double> cashOutSumPln = new LinkedHashMap<>();
+        Map<String, Set<String>> cashOutSourceWallets = new LinkedHashMap<>();
         for (CashOutSignalDto sig : cashOutSignals) {
             String cpKey = sig.counterpartyName() == null ? "CASP" : sig.counterpartyName();
-            String nodeId = "cashout:" + sig.signalType() + ":" + cpKey;
+            String netKey = sig.network() == null ? "UNKNOWN" : sig.network();
+            String nodeId = "cashout:" + netKey + ":" + sig.signalType() + ":" + cpKey;
             cashOutGrouped.putIfAbsent(nodeId, sig);
             cashOutSumPln.merge(nodeId, sig.estimatedPln(), Double::sum);
+            String sourceWalletNodeId = "addr:" + sig.network() + ":" + sig.address();
+            cashOutSourceWallets.computeIfAbsent(nodeId, k -> new LinkedHashSet<>()).add(sourceWalletNodeId);
         }
 
         for (Map.Entry<String, CashOutSignalDto> entry : cashOutGrouped.entrySet()) {
@@ -764,14 +809,16 @@ public class AnalysisOrchestrator {
                     meta
             ));
 
-            String sourceWalletNodeId = "addr:" + sig.network() + ":" + sig.address();
-            edges.add(new GraphEdgeDto(
-                    "edge-cashout-" + sig.id(),
-                    sourceWalletNodeId,
-                    nodeId,
-                    sig.signalType(),
-                    false
-            ));
+            int edgeIdx = 0;
+            for (String sourceWalletNodeId : cashOutSourceWallets.getOrDefault(nodeId, Set.of())) {
+                edges.add(new GraphEdgeDto(
+                        "edge-cashout-" + sig.id() + "-" + (edgeIdx++),
+                        sourceWalletNodeId,
+                        nodeId,
+                        sig.signalType(),
+                        false
+                ));
+            }
         }
 
         return new EvidenceGraphDto(List.copyOf(nodes), List.copyOf(edges));

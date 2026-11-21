@@ -26,6 +26,9 @@ public class TronConnector implements Web3Connector {
     private static final String NETWORK = "TRON";
     private static final String NATIVE_SYMBOL = "TRX";
     private static final String TRONSCAN_ACCOUNT_URL = "https://apilist.tronscanapi.com/api/accountv2?address=";
+    private static final String TRONGRID_ACCOUNT_URL = "https://api.trongrid.io/v1/accounts/";
+    private static final double APPROX_TRX_PLN = 0.9;
+    private static final double APPROX_USD_PLN = 4.0;
 
     private final EntityTagProvider entityTagProvider;
     private final RestClient restClient;
@@ -76,21 +79,73 @@ public class TronConnector implements Web3Connector {
     private RawOnChainProfile inspectLive(String address, String explorerTag) {
         Optional<String> accountBody = Web3ConnectorSupport.safeGet(
                 restClient, TRONSCAN_ACCOUNT_URL + address, log);
+        if (accountBody.isPresent()) {
+            try {
+                JsonNode root = objectMapper.readTree(accountBody.get());
+                int txCount = root.path("totalTransactionCount").asInt(0);
+                int accountType = root.path("accountType").asInt(0);
+                String bytecode = accountType == 2 ? Web3ConnectorSupport.SAMPLE_CONTRACT_BYTECODE : "0x";
+                double balanceTrx = root.path("balance").asDouble(0.0) / 1_000_000.0;
+                String tag = explorerTag;
+                String accountTag = root.path("publicTag").asText("");
+                if (!accountTag.isBlank() && (tag == null || tag.isBlank())) {
+                    tag = accountTag;
+                }
+
+                return new RawOnChainProfile(
+                        address,
+                        NETWORK,
+                        bytecode,
+                        txCount,
+                        balanceTrx,
+                        0.0,
+                        NATIVE_SYMBOL,
+                        Math.round(balanceTrx * APPROX_TRX_PLN * 100.0) / 100.0,
+                        0.0,
+                        tag,
+                        List.of()
+                );
+            } catch (Exception ex) {
+                log.debug("Failed to parse TronScan account JSON for {}: {}", address, ex.getMessage());
+            }
+        }
+
+        return inspectViaTronGrid(address, explorerTag);
+    }
+
+    private RawOnChainProfile inspectViaTronGrid(String address, String explorerTag) {
+        Optional<String> accountBody = Web3ConnectorSupport.safeGet(
+                restClient, TRONGRID_ACCOUNT_URL + address, log);
         if (accountBody.isEmpty()) {
             return Web3ConnectorSupport.emptyEoaProfile(address, NETWORK, NATIVE_SYMBOL, explorerTag);
         }
 
         try {
-            JsonNode root = objectMapper.readTree(accountBody.get());
-            int txCount = root.path("totalTransactionCount").asInt(0);
-            int accountType = root.path("accountType").asInt(0);
-            String bytecode = accountType == 2 ? Web3ConnectorSupport.SAMPLE_CONTRACT_BYTECODE : "0x";
-            double balanceTrx = root.path("balance").asDouble(0.0) / 1_000_000.0;
-            String tag = explorerTag;
-            String accountTag = root.path("publicTag").asText("");
-            if (!accountTag.isBlank() && (tag == null || tag.isBlank())) {
-                tag = accountTag;
+            JsonNode data = objectMapper.readTree(accountBody.get()).path("data");
+            if (!data.isArray() || data.isEmpty()) {
+                return Web3ConnectorSupport.emptyEoaProfile(address, NETWORK, NATIVE_SYMBOL, explorerTag);
             }
+            JsonNode acct = data.get(0);
+            boolean isContract = "Contract".equalsIgnoreCase(acct.path("type").asText(""));
+            String bytecode = isContract ? Web3ConnectorSupport.SAMPLE_CONTRACT_BYTECODE : "0x";
+            double balanceTrx = acct.path("balance").asDouble(0.0) / 1_000_000.0;
+            String tag = explorerTag;
+            String accountName = acct.path("account_name").asText("");
+            if (!accountName.isBlank() && (tag == null || tag.isBlank())) {
+                tag = accountName;
+            }
+
+            List<RawTransaction> txs = isContract ? List.of() : fetchTronGridTrc20Transactions(address);
+            int txCount = txs.size();
+            double stablecoinUsd = txs.stream()
+                    .filter(t -> "USDT".equalsIgnoreCase(t.asset())
+                            || "USDC".equalsIgnoreCase(t.asset())
+                            || "USDD".equalsIgnoreCase(t.asset()))
+                    .mapToDouble(RawTransaction::amount)
+                    .sum();
+            double volumePln = txs.isEmpty()
+                    ? Math.round(balanceTrx * APPROX_TRX_PLN * 100.0) / 100.0
+                    : Math.round(txs.stream().mapToDouble(RawTransaction::estimatedPln).sum() * 100.0) / 100.0;
 
             return new RawOnChainProfile(
                     address,
@@ -100,14 +155,81 @@ public class TronConnector implements Web3Connector {
                     balanceTrx,
                     0.0,
                     NATIVE_SYMBOL,
-                    Math.round(balanceTrx * 0.9 * 100.0) / 100.0,
-                    0.0,
+                    volumePln,
+                    Math.round(stablecoinUsd * 100.0) / 100.0,
                     tag,
-                    List.of()
+                    txs
             );
         } catch (Exception ex) {
-            log.debug("Failed to parse TronScan account JSON for {}: {}", address, ex.getMessage());
+            log.debug("Failed to parse TronGrid account JSON for {}: {}", address, ex.getMessage());
             return Web3ConnectorSupport.emptyEoaProfile(address, NETWORK, NATIVE_SYMBOL, explorerTag);
+        }
+    }
+
+    private List<RawTransaction> fetchTronGridTrc20Transactions(String address) {
+        Optional<String> body = Web3ConnectorSupport.safeGet(
+                restClient, TRONGRID_ACCOUNT_URL + address + "/transactions/trc20?limit=10", log);
+        if (body.isEmpty()) {
+            return List.of();
+        }
+        List<RawTransaction> list = new java.util.ArrayList<>();
+        try {
+            JsonNode items = objectMapper.readTree(body.get()).path("data");
+            if (!items.isArray()) {
+                return List.of();
+            }
+            for (JsonNode item : items) {
+                if (list.size() >= 10) {
+                    break;
+                }
+                String txId = item.path("transaction_id").asText("");
+                String from = item.path("from").asText("");
+                String to = item.path("to").asText("");
+                long blockTsMs = item.path("block_timestamp").asLong(0L);
+                Instant ts = blockTsMs > 0 ? Instant.ofEpochMilli(blockTsMs) : Instant.now();
+
+                JsonNode tokenInfo = item.path("token_info");
+                String symbol = tokenInfo.path("symbol").asText("TRC20");
+                int decimals = Math.max(0, Math.min(18, tokenInfo.path("decimals").asInt(6)));
+                double amount = parseTokenAmount(item.path("value").asText("0"), decimals);
+                boolean isOut = from.equals(address);
+                String counterparty = isOut ? to : from;
+                String hint = entityTagProvider.findTag(counterparty, NETWORK)
+                        .map(t -> t.name() + " (" + t.role() + ")")
+                        .orElse("Live TronGrid TRC-20");
+
+                boolean isUsdPegged = "USDT".equalsIgnoreCase(symbol)
+                        || "USDC".equalsIgnoreCase(symbol)
+                        || "USDD".equalsIgnoreCase(symbol)
+                        || "TUSD".equalsIgnoreCase(symbol);
+                double estimatedPln = isUsdPegged
+                        ? Math.round(amount * APPROX_USD_PLN * 100.0) / 100.0
+                        : 0.0;
+
+                list.add(new RawTransaction(
+                        txId,
+                        ts,
+                        NETWORK,
+                        isOut ? "OUT" : "IN",
+                        from,
+                        to,
+                        amount,
+                        symbol,
+                        estimatedPln,
+                        hint
+                ));
+            }
+        } catch (Exception ex) {
+            log.debug("Failed to parse TronGrid TRC-20 transactions for {}: {}", address, ex.getMessage());
+        }
+        return List.copyOf(list);
+    }
+
+    private static double parseTokenAmount(String rawValue, int decimals) {
+        try {
+            return new java.math.BigDecimal(rawValue).movePointLeft(decimals).doubleValue();
+        } catch (Exception ex) {
+            return 0.0;
         }
     }
 
@@ -151,7 +273,7 @@ public class TronConnector implements Web3Connector {
                         14500.0,
                         "USDT",
                         58000.0,
-                        "Tether: USDT TRC-20 (STABLECOIN)"
+                        "Tether: USDT TRC-20 — wywołanie kontraktu tokena (STABLECOIN)"
                 ),
                 new RawTransaction(
                         "t40011223344556677889900aabbccddeeff00112233445566778899aabb0004",

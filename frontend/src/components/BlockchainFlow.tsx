@@ -157,13 +157,20 @@ export const BlockchainFlow: React.FC<BlockchainFlowProps> = ({ run }) => {
         : confirmed.reduce((sum, f) => sum + (f.onChainMetrics?.txCount ?? 0), 0) ||
           allTimelineEvents.length;
 
-    const cashOutCount = run.cashOutSignals?.length ?? 0;
+    const cashOutSignals = run.cashOutSignals ?? [];
+    const cashOutCount = cashOutSignals.length;
+    const patternSignalCount = cashOutSignals.filter(
+      (s) => s.signalType === 'RECURRING_CASHOUT' || s.signalType === 'AML_STRUCTURING_OR_2HOP',
+    ).length;
+    const txSignalCount = cashOutCount - patternSignalCount;
 
     return {
       totalVolumePln,
       stablecoinUsd,
       txCount,
       cashOutCount,
+      txSignalCount,
+      patternSignalCount,
     };
   }, [run, allTimelineEvents]);
 
@@ -297,7 +304,7 @@ export const BlockchainFlow: React.FC<BlockchainFlowProps> = ({ run }) => {
             {kpis.cashOutCount}
           </div>
           <div className="text-[11px] text-[#64748B] mt-1">
-            CEX Off-Ramp, P2P, bramki krypto-fiat, cykliczność
+            Transakcyjne: {kpis.txSignalCount} · Wzorce cykliczne/AML: {kpis.patternSignalCount}
           </div>
         </div>
       </div>

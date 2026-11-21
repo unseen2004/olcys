@@ -15,9 +15,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
- * Passive OSINT connector querying Wayback Machine CDX archive index.
+ * Passive OSINT connector querying Wayback Machine CDX archive index and archived HTML snapshots.
  */
 @Component
 public class WaybackConnector implements Web2Connector {
@@ -25,6 +26,12 @@ public class WaybackConnector implements Web2Connector {
     private static final Logger log = LoggerFactory.getLogger(WaybackConnector.class);
     private static final Set<String> DOMAIN_AND_HANDLE_TYPES = Set.of("DOMAIN", "WEBSITE", "URL", "NICK", "SOCIAL_LOGIN");
     private static final int MAX_QUERIES = 2;
+    private static final int MAX_ARCHIVED_BODY_CHARS = 1000;
+    private static final Pattern SCRIPT_PATTERN =
+            Pattern.compile("<script\\b[^>]*>.*?</script>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern STYLE_PATTERN =
+            Pattern.compile("<style\\b[^>]*>.*?</style>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -63,8 +70,11 @@ public class WaybackConnector implements Web2Connector {
             if (count++ >= MAX_QUERIES) {
                 break;
             }
-            String cdxUrl = "https://web.archive.org/cdx/search/cdx?url=*"
-                    + Web2ConnectorSupport.urlEncode(query) + "*&output=json&limit=3";
+            String target = (query.contains(".") || query.contains("/"))
+                    ? query
+                    : "github.com/" + query;
+            String cdxUrl = "https://web.archive.org/cdx/search/cdx?url="
+                    + Web2ConnectorSupport.urlEncode(target) + "&output=json&limit=3";
             Web2ConnectorSupport.safeGet(restClient, cdxUrl, log, "application/json")
                     .ifPresent(rawBody -> parseCdxResponse(rawBody, query, evidences));
         }
@@ -79,7 +89,6 @@ public class WaybackConnector implements Web2Connector {
                 return;
             }
 
-            String sha256 = Web2ConnectorSupport.sha256(rawBody);
             Instant now = Instant.now();
             for (int i = 1; i < rows.size(); i++) {
                 JsonNode row = rows.get(i);
@@ -94,18 +103,27 @@ public class WaybackConnector implements Web2Connector {
                 }
 
                 String archiveUrl = "https://web.archive.org/web/" + timestamp + "/" + original;
-                String snippet = String.format(
+                StringBuilder rawText = new StringBuilder(String.format(
                         "Migawka Wayback Machine dla '%s' (timestamp=%s, HTTP=%s): %s",
-                        query, timestamp, status, original);
-                String context = Web2ConnectorSupport.classifyContext(original, "FORUM_DISCUSSION");
+                        query, timestamp, status, original));
+                if (status.isBlank() || "200".equals(status)) {
+                    String snapshotRawUrl = "https://web.archive.org/web/" + timestamp + "id_/" + original;
+                    Web2ConnectorSupport.safeGet(restClient, snapshotRawUrl, log, "text/html")
+                            .map(WaybackConnector::extractReadableText)
+                            .filter(text -> !text.isBlank())
+                            .ifPresent(bodyText -> rawText.append(" | Treść archiwalna: ").append(bodyText));
+                }
+
+                String snippet = Web2ConnectorSupport.truncateSnippet(rawText.toString());
+                String context = Web2ConnectorSupport.classifyContext(snippet, "FORUM_DISCUSSION");
 
                 sink.add(new RawEvidence(
                         name(),
                         "WEB_ARCHIVE",
                         archiveUrl,
                         now,
-                        sha256,
-                        Web2ConnectorSupport.truncateSnippet(snippet),
+                        Web2ConnectorSupport.sha256(snippet),
+                        snippet,
                         query,
                         context
                 ));
@@ -113,5 +131,27 @@ public class WaybackConnector implements Web2Connector {
         } catch (Exception ex) {
             log.debug("Failed to parse Wayback CDX JSON for {}: {}", query, ex.getMessage());
         }
+    }
+
+    static String extractReadableText(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+        String noScripts = SCRIPT_PATTERN.matcher(html).replaceAll(" ");
+        String noStyles = STYLE_PATTERN.matcher(noScripts).replaceAll(" ");
+        String stripped = HTML_TAG_PATTERN.matcher(noStyles).replaceAll(" ");
+        String collapsed = stripped
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (collapsed.length() > MAX_ARCHIVED_BODY_CHARS) {
+            return collapsed.substring(0, MAX_ARCHIVED_BODY_CHARS);
+        }
+        return collapsed;
     }
 }

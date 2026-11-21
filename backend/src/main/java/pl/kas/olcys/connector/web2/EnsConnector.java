@@ -100,17 +100,17 @@ public class EnsConnector implements Web2Connector {
             }
 
             String targetLabel = resolvedName;
-            String snippet = String.format(
+            String snippet = Web2ConnectorSupport.truncateSnippet(String.format(
                     "Rekord ENS (Ethereum Name Service): nazwa '%s' (display: '%s') powiązana z adresem ETH %s",
-                    targetLabel, displayName, resolvedAddress);
+                    targetLabel, displayName, resolvedAddress));
 
             return Optional.of(new RawEvidence(
                     name(),
                     "WEB3_IDENTITY",
                     "https://app.ens.domains/" + targetLabel,
                     Instant.now(),
-                    Web2ConnectorSupport.sha256(rawBody),
-                    Web2ConnectorSupport.truncateSnippet(snippet),
+                    Web2ConnectorSupport.sha256(snippet),
+                    snippet,
                     query,
                     "OWN_PROFILE_VERIFIED"
             ));

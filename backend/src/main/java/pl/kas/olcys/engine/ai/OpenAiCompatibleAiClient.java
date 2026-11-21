@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * OpenAI-compatible client aimed strictly at local/internal inference endpoints (e.g., Ollama).
@@ -203,7 +204,8 @@ public class OpenAiCompatibleAiClient implements AiClient {
         );
         String systemPrompt = "Jesteś lokalnym asystentem analitycznym KAS. Napisz zwięzłe, formalne podsumowanie wykonawcze "
                 + "po polsku (2-3 pełne zdania) na podstawie poniższych danych. Obowiązkowo przytocz nazwę podmiotu, "
-                + "liczbę potwierdzonych portfeli, dokładną kwotę wolumenu w PLN oraz ocenę ryzyka PIT-38.";
+                + "liczbę potwierdzonych portfeli, dokładną kwotę wolumenu w PLN oraz ocenę ryzyka PIT-38. "
+                + "Nie określaj Wskaźnika Pewności portfela jako procentowego poziomu ryzyka PIT-38 i nie zmieniaj podanych liczb.";
         String userPrompt = "Podmiot: " + subjectDisplayName
                 + " | Potwierdzone portfele: " + (confirmed == null ? 0 : confirmed.size())
                 + " | Odrzucone FP: " + (rejected == null ? 0 : rejected.size())
@@ -215,7 +217,7 @@ public class OpenAiCompatibleAiClient implements AiClient {
             String response = invokeChatCompletion(endpointUri, systemPrompt, userPrompt, 260);
             if (!response.isBlank()) {
                 this.lastCallUsedFallback = false;
-                return response.trim();
+                return sanitizeExecutiveSummaryPl(response);
             }
             this.lastCallUsedFallback = true;
             return deterministicBaseline;
@@ -227,6 +229,34 @@ public class OpenAiCompatibleAiClient implements AiClient {
             this.lastCallUsedFallback = true;
             return deterministicBaseline;
         }
+    }
+
+    private static final String PIT38_REPLACEMENT =
+            "Stwierdzono podwyższone ryzyko podatkowe PIT-38 wymagające weryfikacji zeznania rocznego.";
+    private static final Pattern PIT38_OCENIONO_PCT = Pattern.compile(
+            "oceniono ryzyko (?:podatkowe )?pit-38 na \\d+\\s*%\\.?",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern PIT38_PODNOSI_PCT = Pattern.compile(
+            "podnosi ryzyko (?:podatkowe )?pit-38[^.]*\\b\\d+\\s*%\\.?",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern PIT38_GENERIC_PCT = Pattern.compile(
+            "ryzyko (?:podatkowe )?pit-38 (?:na poziomie |wynosi |na )?\\d+\\s*%\\.?",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern FP_PHRASE = Pattern.compile(
+            "niewielkiej liczby sygnałów False Positives",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+    static String sanitizeExecutiveSummaryPl(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String sanitized = raw.trim();
+        sanitized = PIT38_OCENIONO_PCT.matcher(sanitized).replaceAll(PIT38_REPLACEMENT);
+        sanitized = PIT38_PODNOSI_PCT.matcher(sanitized).replaceAll(PIT38_REPLACEMENT);
+        sanitized = PIT38_GENERIC_PCT.matcher(sanitized).replaceAll(PIT38_REPLACEMENT);
+        sanitized = FP_PHRASE.matcher(sanitized)
+                .replaceAll("odrzucenia adresów instytucjonalnych przez Firewall False Positives");
+        return sanitized.replaceAll(" {2,}", " ").trim();
     }
 
     private String invokeChatCompletion(

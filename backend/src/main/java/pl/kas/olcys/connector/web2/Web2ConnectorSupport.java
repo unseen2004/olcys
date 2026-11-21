@@ -6,6 +6,7 @@ import org.springframework.web.client.RestClient;
 import pl.kas.olcys.api.dto.IdentifierDto;
 import pl.kas.olcys.crypto.CryptoAddressValidator;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ final class Web2ConnectorSupport {
     static Optional<String> safeGet(RestClient restClient, String url, Logger log, String acceptHeader) {
         try {
             RestClient.RequestHeadersSpec<?> spec = restClient.get()
-                    .uri(url)
+                    .uri(URI.create(url.replace(" ", "%20")))
                     .header("User-Agent", USER_AGENT);
             if (acceptHeader != null && !acceptHeader.isBlank()) {
                 spec = spec.header("Accept", acceptHeader);
