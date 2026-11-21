@@ -1,0 +1,79 @@
+1
+00:00:00,000 --> 00:00:06,000
+OŁCyŚ — Osintowy Łapacz Cyfrowych Śladów dla KAS.
+Łączenie śladów Web2 z blockchainem Web3 pod kątem PIT-38.
+
+2
+00:00:06,000 --> 00:00:12,000
+Prezentacja na danych zanonimizowanych i syntetycznych.
+Wyłącznie legalny, pasywny OSINT — 100% On-Premise.
+
+3
+00:00:12,000 --> 00:00:20,000
+Obsługiwane 6 typów identyfikatorów, 6 otwartych źródeł Web2
+oraz 3 sieci Web3 (ETH, BTC, TRON) w trybie pasywnym.
+
+4
+00:00:20,000 --> 00:00:28,000
+Scenariusz 1: @krypto_janek (NICK, imię/nazwisko, e-mail).
+Tryb walidacyjny (zero wysyłki do sieci) — start analizy.
+
+5
+00:00:28,000 --> 00:00:39,000
+Odnaleziono 4 źródła Web2 (GitHub, KantorP2P, Wayback, Forum).
+Inspektor rejestruje źródło, dokładny URL, czas UTC i SHA-256.
+
+6
+00:00:39,000 --> 00:00:48,000
+Automatyczna ekstrakcja adresów ETH i BTC z surowych tekstów.
+Weryfikacja sum kontrolnych EIP-55 (Keccak-256) oraz Bech32.
+
+7
+00:00:48,000 --> 00:01:01,500
+ETH 100%: +85 pkt za własny profil GitHub (próg 80–100%)
++15 pkt premii synergii za drugie niezależne źródło KantorP2P.pl.
+
+8
+00:01:01,500 --> 00:01:12,000
+Portfel BTC uzyskał 70% (przedział Prawdopodobne 60–79%)
+za kontekst rozliczeń B2B i P2P z archiwum WaybackArchive.
+
+9
+00:01:12,000 --> 00:01:24,000
+Firewall FP odrzucił router Uniswap V3 z wynikiem 0%:
+Warstwa 1 wykryła niepusty kod bajtowy (bytecode != 0x).
+
+10
+00:01:24,000 --> 00:01:36,000
+Binance 14 Hot Wallet odrzucony z 0% (Address Tag: CEX) —
+nie należy do podatnika, ale zachowano fakt interakcji on-chain.
+
+11
+00:01:36,000 --> 00:01:44,000
+Interaktywny graf łączy podmiot, 4 źródła Web2, portfele
+oraz wykluczone False Positives z klikalnym inspektorem.
+
+12
+00:01:44,000 --> 00:02:00,000
+Wolumen 176 600 zł, 12 100 USD stablecoin, chronologia IN/OUT
+oraz 13 alertów Fiat Cash-Out (szac. PIT-38 19%: 25 574 zł).
+
+13
+00:02:00,000 --> 00:02:13,000
+Raport wyraźnie oddziela Strefę 1 (Fakty z URL/UTC/SHA-256),
+Strefę 2 (Wyniki obliczeń) oraz Strefę 3 (Wnioski i PIT-38).
+
+14
+00:02:13,000 --> 00:02:20,000
+Lokalny przelicznik SHA-256 potwierdza integralność 4/4 cytatów.
+Jednym kliknięciem pobieramy gotowy raport PDF dla analityka.
+
+15
+00:02:20,000 --> 00:02:34,000
+Analiza kontrolna v2 i Diff w czasie wykrywają podmianę portfela
+na profilu GitHub (0x71C7...76F → 0xd8dA...045, +57 000 zł).
+
+16
+00:02:34,000 --> 00:02:45,000
+Monorepo Java + React + PostgreSQL + Docker. Wymienny AI on-premise,
+0 danych na zewnątrz, 100% otwarte licencje Open Source.
