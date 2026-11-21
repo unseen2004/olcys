@@ -46,9 +46,9 @@ Analitycy **Krajowej Administracji Skarbowej (KAS)** w ramach czynności sprawdz
 2. **Ekstrahuje i kryptograficznie weryfikuje adresy krypto** w sieciach **Ethereum (EIP-55 Keccak-256)**, **Bitcoin (Base58Check, SegWit Bech32, Taproot Bech32m)** i **TRON (Base58Check)**, eliminując 64-znakowe hashe transakcji oraz uszkodzone ciągi znaków.
 3. **Odrzuca fałszywe trafienia (3-warstwowy Firewall False Positives)** — automatycznie wyklucza z przypisania osobistego (`0%`) smart kontrakty (`eth_getCode` → `bytecode != 0x`), adresy giełd CEX/CASP, routery DEX, kontrakty stablecoin, miksery, zbiórki charytatywne i adresy burn.
 4. **Wylicza deterministyczny, wyjaśnialny Wskaźnik Pewności (Confidence Score 0–100%)** wraz z rozbiciem punktowym każdej reguły oraz **premią synergii +15 pp** za potwierdzenie z co najmniej dwóch niezależnych źródeł Web2.
-5. **Wykrywa sygnały wyjścia do waluty fiducjarnej (Fiat Cash-Out)** — przelewy na CEX/CASP (`CEX_OFFRAMP`), konwersje stablecoin (`STABLECOIN_CONVERSION`), korelacje czasowe z ogłoszeniami P2P/bramkami (`P2P_OR_GATEWAY`) oraz cykliczne wypłaty (`RECURRING_CASHOUT`).
-6. **Monitoruje zmiany w czasie (Diff v1 → v2)** — wykrywa podmianę adresu portfela opublikowanego na profilu podmiotu, nowo dodane adresy i przyrost wolumenu w PLN.
-7. **Generuje czytelny raport OSINT w 3 wyraźnych strefach** (Fakty Źródłowe → Wyniki Obliczeń → Wnioski do Dalszej Weryfikacji) dostępny jednocześnie w **interfejsie webowym, pliku PDF (Apache PDFBox 3.0.3 z pełnym wsparciem polskich znaków)** oraz **eksporcie JSON**.
+5. **Wykrywa sygnały wyjścia do waluty fiducjarnej (Fiat Cash-Out) w 5 klasach** — przelewy na CEX/CASP (`CEX_OFFRAMP`), konwersje stablecoin (`STABLECOIN_CONVERSION`), korelacje czasowe z ogłoszeniami P2P/bramkami w oknie ±72h (`P2P_OR_GATEWAY`), cykliczne wypłaty (`RECURRING_CASHOUT`) oraz wieloetapowe wyjścia i dzielenie transz 3,5–25 tys. PLN (`AML_STRUCTURING_OR_2HOP`).
+6. **Monitoruje zmiany w czasie (Diff v1 → v2) oraz harmonogramy CRON w DB** — wykrywa podmianę adresu portfela opublikowanego na profilu podmiotu, nowo dodane adresy i przyrost wolumenu w PLN (`monitoring_schedules` w Flyway `V2`).
+7. **Generuje czytelny raport OSINT w 3 wyraźnych strefach** (Fakty Źródłowe → Wyniki Obliczeń → Wnioski do Dalszej Weryfikacji) wraz z kalkulatorem luki podatkowej 19% PIT-38 (`art. 30b ustawy o PIT`), projektem wezwania do podmiotów CASP w PDF (`art. 182 Ordynacji podatkowej / DAC8 / MiCA`) oraz pełnym eksportem JSON i PDF (`Apache PDFBox 3.0.3` z polskimi znakami).
 
 ---
 
@@ -631,6 +631,17 @@ Wywołanie porównania czasowego (`GET /api/subjects/{subjectId}/diff?from={run1
 }
 ```
 
+### Przykładowe logi uruchomienia backendu, migracji Flyway i testów (`./mvnw test`)
+
+```text
+2026-11-21T22:36:56.831+01:00  INFO --- [main] pl.kas.olcys.OlcysEndToEndTest          : Starting OlcysEndToEndTest using Java 21.0.9
+2026-11-21T22:36:58.847+01:00  INFO --- [main] org.flywaydb.core.FlywayExecutor        : Successfully validated 2 migrations (V1__init.sql, V2__monitoring_schedules.sql)
+2026-11-21T22:36:59.983+01:00  INFO --- [main] p.k.o.connector.web2.SyntheticConnector : Loaded 3 KAS validation scenarios from data/scenarios.json
+2026-11-21T22:36:59.997+01:00  INFO --- [main] p.k.o.connector.web3.EntityTagRegistry  : Loaded 83 reference KAS entity tags from data/entity-tags.json
+[INFO] Tests run: 40, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
 ### Przykładowy przebieg walidacji (`scripts/run-demo-check.sh`)
 
 ```text
@@ -638,14 +649,14 @@ Wywołanie porównania czasowego (`GET /api/subjects/{subjectId}/diff?from={run1
  OŁCyŚ — Automatyczna walidacja scenariuszy KAS (E2E API Check)
  Target: http://localhost:8080
 ================================================================
-[OK] 1/8 Health check: status=UP, externalDataTransfer=false
+[OK] 1/8 Health check: status=UP, externalDataTransfer=false (Java 21.0.9, AI=ollama)
 [OK] 2/8 Lista scenariuszy KAS: pobrano 3 scenariusze
-[OK] 3/8 Scenariusz 1 (v1): utworzono sprawę i uruchomiono analizę
-[OK] 4/8 Weryfikacja v1: ETH 100% (synergia), BTC 70%, odrzucone FP: Binance (CEX, interakcja=true) i Uniswap V3 (Smart Contract, bytecode!=0x), Cash-Out oraz 3 strefy raportu
-[OK] 5/8 Scenariusz 1 (v2): uruchomiono analizę kontrolną (snapshotStep=2)
-[OK] 6/8 Diff v1 -> v2: wykryto podmianę portfela (walletRotationDetected=true)
-[OK] 7/8 Eksport dowodowy: pobrano report.pdf (> 2000 B, nagłówek %PDF) oraz report.json
-[OK] 8/8 Scenariusz 3 (Szum/FP): giveaway 20% oraz odrzucone z wynikiem 0% (Aid For Ukraine + Tornado Cash)
+[OK] 3/8 Scenariusz 1 (v1): utworzono sprawę subjectId=subj-53fbaf02, runId=run-21fc392c
+[OK] 4/8 Weryfikacja v1: ETH 100% (synergia), BTC 70%, FP Binance (0%, interakcja=true), Uniswap V3 (0%, bytecode!=0x), Cash-Out i 3 strefy raportu
+[OK] 5/8 Scenariusz 1 (v2): uruchomiono analizę kontrolną run2Id=run-ad940894
+[OK] 6/8 Diff v1 -> v2: wykryto podmianę portfela (GitHub: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F -> 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045)
+[OK] 7/8 Eksport dowodowy: pobrano report.pdf (44507 B, nagłówek %PDF) oraz report.json
+[OK] 8/8 Scenariusz 3 (Szum/FP): giveaway 20%, zbiórka charytatywna i mikser odrzucone z 0%
 ================================================================
  SUKCES: Wszystkie 8 etapów walidacji KAS zakończone pomyślnie!
 ================================================================
@@ -659,9 +670,26 @@ Po uruchomieniu aplikacji (`http://localhost:5173`) i wykonaniu scenariuszy wali
 | :--- | :--- | :--- |
 | `docs/screenshots/01-graf-powiazan.png` | `EvidenceGraph.tsx` | Graf warstwowy `Podmiot → Web2 → Portfele (%) / Odrzucone FP (0%) → Fiat Cash-Out` + otwarty boczny Inspektor Dowodowy z URL, UTC i SHA-256 |
 | `docs/screenshots/02-portfele-firewall-fp.png` | `AddressCards.tsx` | Karta portfela ETH (`100%` z rozbiciem `85 + 15`) oraz sekcja wykluczonych FP (`Binance 14` z tagiem `Odnotowano interakcję on-chain` i `Uniswap V3` z `bytecode != 0x`) |
-| `docs/screenshots/03-przeplywy-cashout.png` | `BlockchainFlow.tsx` | 4 karty KPI (PLN, Stablecoin USD, transakcje, sygnały Cash-Out), wykres słupkowy Recharts i chronologiczna tabela transakcji |
+| `docs/screenshots/03-przeplywy-cashout.png` | `BlockchainFlow.tsx` | 4 karty KPI (PLN, Stablecoin USD, transakcje, sygnały Cash-Out), kalkulator 19% PIT-38, wykres słupkowy Recharts i chronologiczna tabela transakcji |
 | `docs/screenshots/04-raport-3-strefy.png` | `OsintReportView.tsx` | Podział na **Strefę 1 (Fakty Źródłowe)**, **Strefę 2 (Wyniki Obliczeń)** i **Strefę 3 (Wnioski PIT-38)** + przycisk pobierania PDF |
 | `docs/screenshots/05-diff-podmiana-portfela.png` | `HistoryDiff.tsx` | Czerwony alert **`WYKRYTO PODMIANĘ ADRESU PORTFELA NA PROFILU`** porównujący analizę #1 (`0x71C7...76F`) z analizą #2 (`0xd8dA...045`) |
+
+#### Podgląd na żywo interfejsu
+
+**1. Interaktywny graf powiązań Web2 ↔ Web3 z bocznym Inspektorem Dowodowym KAS (`URL + UTC + SHA-256`):**
+![Graf powiązań OSINT i Inspektor Dowodowy](docs/screenshots/01-graf-powiazan.png)
+
+**2. Portfele niehostowane (100% z premią synergii, 70%) oraz 3-warstwowy Firewall False Positives (`0%`):**
+![Portfele i Firewall False Positives](docs/screenshots/02-portfele-firewall-fp.png)
+
+**3. Przepływy On-Chain, kalkulator luki PIT-38 (19%) oraz sygnały Fiat Cash-Out:**
+![Przepływy On-Chain i Fiat Cash-Out](docs/screenshots/03-przeplywy-cashout.png)
+
+**4. Kompletny 3-strefowy raport OSINT KAS i weryfikator Chain-of-Custody (`SHA-256`):**
+![Raport OSINT w 3 strefach](docs/screenshots/04-raport-3-strefy.png)
+
+**5. Porównanie zmian w czasie (Diff `v1 → v2`) i alert podmiany portfela na profilu:**
+![Porównanie w czasie Diff i podmiana portfela](docs/screenshots/05-diff-podmiana-portfela.png)
 
 ---
 
