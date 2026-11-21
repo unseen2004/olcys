@@ -115,6 +115,25 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     return [...DEFAULT_WEB2_SOURCES, ...extras];
   }, [health]);
 
+  const normalizeSourcesToOptions = (rawSources: string[]): string[] => {
+    const byLower = new Map(web2SourceOptions.map((opt) => [opt.id.toLowerCase(), opt.id]));
+    const normalized = new Set<string>();
+    for (const src of rawSources) {
+      const match = byLower.get(src.trim().toLowerCase());
+      if (match) {
+        normalized.add(match);
+      } else if (byLower.has('synthetic')) {
+        normalized.add(byLower.get('synthetic')!);
+      }
+    }
+    return Array.from(normalized);
+  };
+
+  const visibleSelectedCount = useMemo(
+    () => web2SourceOptions.filter((opt) => selectedSources.includes(opt.id)).length,
+    [web2SourceOptions, selectedSources],
+  );
+
   const handleAddIdentifier = () => {
     setIdentifiers((prev) => [...prev, { type: 'EMAIL', value: '' }]);
   };
@@ -183,7 +202,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     );
     setMode(scenario.recommendedMode ?? 'SYNTHETIC');
     if (scenario.sources?.length) {
-      setSelectedSources([...scenario.sources]);
+      setSelectedSources(normalizeSourcesToOptions(scenario.sources));
     }
     if (scenario.networks?.length) {
       setSelectedNetworks([...scenario.networks]);
@@ -372,9 +391,24 @@ export const SearchForm: React.FC<SearchFormProps> = ({
                 <span className="text-xs font-semibold uppercase tracking-wide text-[#334155]">
                   Źródła Web2 (OSINT pasywny)
                 </span>
-                <span className="text-[11px] text-[#64748B]">
-                  {selectedSources.length}/{web2SourceOptions.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedSources(
+                        visibleSelectedCount === web2SourceOptions.length
+                          ? []
+                          : web2SourceOptions.map((o) => o.id),
+                      )
+                    }
+                    className="text-[11px] font-medium text-[#0F2942] hover:underline cursor-pointer"
+                  >
+                    {visibleSelectedCount === web2SourceOptions.length ? 'Odznacz' : 'Wszystkie'}
+                  </button>
+                  <span className="text-[11px] text-[#64748B]">
+                    {visibleSelectedCount}/{web2SourceOptions.length}
+                  </span>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {web2SourceOptions.map((src) => {
