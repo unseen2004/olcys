@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -z "${JAVA_HOME:-}" ] || [ ! -x "${JAVA_HOME}/bin/javac" ]; then
+  if [ -x "/snap/rustrover/262/jbr/bin/javac" ]; then
+    export JAVA_HOME="/snap/rustrover/262/jbr"
+  elif [ -x "/snap/clion/533/jbr/bin/javac" ]; then
+    export JAVA_HOME="/snap/clion/533/jbr"
+  fi
+fi
+
+exec mvn "$@"

@@ -1,0 +1,23 @@
+# Maven / Java build artifacts
+backend/target/
+*.jar
+*.war
+*.ear
+*.log
+
+# Node / Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE & OS metadata
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Temporary / local env overrides
+.env
+.env.local
+*.tmp

@@ -1,0 +1,666 @@
+[
+  {
+    "address": "0x28C6c06298d514Db089934071355E5743bf21d60",
+    "network": "ETH",
+    "name": "Binance 14 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Binance w sieci Ethereum (węzeł wypłat i depozytów klientów)."
+  },
+  {
+    "address": "0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549",
+    "network": "ETH",
+    "name": "Binance 15 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Binance (ETH / ERC-20)."
+  },
+  {
+    "address": "0xDFd5293D8e347dFe59E90eFd55b2956a1343963d",
+    "network": "ETH",
+    "name": "Binance 16 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Binance obsługujący wypłaty ERC-20."
+  },
+  {
+    "address": "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+    "network": "ETH",
+    "name": "Binance 8 (Reserve Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny portfel rezerwowy i płynnościowy giełdy Binance w sieci Ethereum."
+  },
+  {
+    "address": "0x56Eddb7aa87536c09CCc2793473599fD21A8b17F",
+    "network": "ETH",
+    "name": "Binance 17 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny gorący portfel giełdy Binance w sieci Ethereum."
+  },
+  {
+    "address": "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8",
+    "network": "ETH",
+    "name": "Binance 7 (Cold Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny zimny portfel rezerwowy giełdy Binance w sieci Ethereum."
+  },
+  {
+    "address": "0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE",
+    "network": "ETH",
+    "name": "Binance 1 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Historyczny główny gorący portfel giełdy Binance w sieci Ethereum."
+  },
+  {
+    "address": "0xD551234Ae421e3BCBA99A0Da6d736074f22192FF",
+    "network": "ETH",
+    "name": "Binance 2 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny gorący portfel giełdy Binance (Ethereum)."
+  },
+  {
+    "address": "0x5a52E96BAcdaBb82fd05763E25335261B270Efcb",
+    "network": "ETH",
+    "name": "Binance 28 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny portfel operacyjny giełdy Binance w sieci Ethereum."
+  },
+  {
+    "address": "bc1qm34lsc65zpw79lxes69zkqmk6ee3ewf0j77s3h",
+    "network": "BTC",
+    "name": "Binance BTC Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel SegWit giełdy Binance w sieci Bitcoin."
+  },
+  {
+    "address": "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo",
+    "network": "BTC",
+    "name": "Binance BTC Cold Wallet",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny zimny portfel rezerwowy giełdy Binance w sieci Bitcoin."
+  },
+  {
+    "address": "TNXoiAJ3dct8Fjg4M9fkLFh9S2v9TXc32G",
+    "network": "TRON",
+    "name": "Binance TRON Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Binance w sieci TRON (TRX / USDT TRC-20)."
+  },
+  {
+    "address": "TNaRAoLUyYEV2uF7GUrzSjRQTU8v5ZJ5VR",
+    "network": "TRON",
+    "name": "Binance TRON Hot Wallet 2",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny portfel wypłat giełdy Binance w sieci TRON."
+  },
+  {
+    "address": "0x2910543Af39abA0Cd09dBb2D50200b3E800A63D2",
+    "network": "ETH",
+    "name": "Kraken Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "US/EU",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Kraken w sieci Ethereum."
+  },
+  {
+    "address": "0x53d284357ec70cE289D6D64134DfAc8E511c8a3D",
+    "network": "ETH",
+    "name": "Kraken 4 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "US/EU",
+    "notesPl": "Publiczny portfel operacyjny giełdy Kraken (Ethereum)."
+  },
+  {
+    "address": "0x267be1C1D684F78cb4F6a176C4911b741E4Ffdc0",
+    "network": "ETH",
+    "name": "Kraken 2 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "US/EU",
+    "notesPl": "Publiczny portfel rozliczeniowy giełdy Kraken w sieci Ethereum."
+  },
+  {
+    "address": "0xE853c56864A2ebe4576a807D26Fdc4A0adA51919",
+    "network": "ETH",
+    "name": "Kraken 5 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "US/EU",
+    "notesPl": "Publiczny gorący portfel giełdy Kraken (Ethereum)."
+  },
+  {
+    "address": "1GwENWtD14QmgxxVuAEFyUN6J7QxMc5sbD",
+    "network": "BTC",
+    "name": "Kraken BTC Custody",
+    "role": "CEX",
+    "jurisdiction": "US/EU",
+    "notesPl": "Adres referencyjny KAS reprezentujący rozliczenia depozytowe giełdy Kraken w sieci Bitcoin."
+  },
+  {
+    "address": "0x71660c4005BA85c37ccec55d0C4493E66Fe775d3",
+    "network": "ETH",
+    "name": "Coinbase 1 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "US",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Coinbase w sieci Ethereum."
+  },
+  {
+    "address": "0x503828976D22510aad0201ac7EC88293211D23Da",
+    "network": "ETH",
+    "name": "Coinbase 2 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "US",
+    "notesPl": "Publiczny portfel wypłat giełdy Coinbase (Ethereum)."
+  },
+  {
+    "address": "0xA9D1e08C7793af67e9d92fe308d5697FB81d3E43",
+    "network": "ETH",
+    "name": "Coinbase 10 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "US",
+    "notesPl": "Publiczny portfel operacyjny giełdy Coinbase w sieci Ethereum."
+  },
+  {
+    "address": "3FHNBLobJnbCTFTVakh5TXmEneyf5PT61B",
+    "network": "BTC",
+    "name": "Coinbase BTC Custody",
+    "role": "CEX",
+    "jurisdiction": "US",
+    "notesPl": "Publiczny portfel depozytowy giełdy Coinbase w sieci Bitcoin."
+  },
+  {
+    "address": "0x6cC5F688a315f3dC28A7781717a9A798a59fDA7b",
+    "network": "ETH",
+    "name": "OKX Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy OKX (dawniej OKEx) w sieci Ethereum."
+  },
+  {
+    "address": "0x5041ed759Dd4aFc3a72b8192C143F72f4724081A",
+    "network": "ETH",
+    "name": "OKX 2 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny portfel operacyjny giełdy OKX w sieci Ethereum."
+  },
+  {
+    "address": "TUYrRyCudNAorc8VfsueMpB7vN98P9VJpJ",
+    "network": "TRON",
+    "name": "OKX TRON Settlement",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Adres referencyjny KAS reprezentujący rozliczenia giełdy OKX w sieci TRON."
+  },
+  {
+    "address": "0x876EabF441B2EE5B5b0554Fd502a8E0600950cFa",
+    "network": "ETH",
+    "name": "Bitfinex Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "VG/GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Bitfinex w sieci Ethereum."
+  },
+  {
+    "address": "0x77134cbC06cB00b66F4c7e623D5fdBF6777635EC",
+    "network": "ETH",
+    "name": "Bitfinex 3 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "VG/GLOBAL",
+    "notesPl": "Publiczny portfel rozliczeniowy giełdy Bitfinex w sieci Ethereum."
+  },
+  {
+    "address": "bc1qgdjqv0av3q56jvd82tkdjpy7gdp9ut8tlqmgrpmv24sq90ecnvqqjwvw97",
+    "network": "BTC",
+    "name": "Bitfinex BTC Cold Wallet",
+    "role": "CEX",
+    "jurisdiction": "VG/GLOBAL",
+    "notesPl": "Oficjalny publiczny zimny portfel rezerwowy giełdy Bitfinex w sieci Bitcoin."
+  },
+  {
+    "address": "0xf89d7b9c864f589bbF53a82105107622B35EaA40",
+    "network": "ETH",
+    "name": "Bybit Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "AE/GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Bybit w sieci Ethereum."
+  },
+  {
+    "address": "TARWGziDLXNcwScNDS4RD1DyJunXV6DpmF",
+    "network": "TRON",
+    "name": "Bybit TRON Settlement",
+    "role": "CEX",
+    "jurisdiction": "AE/GLOBAL",
+    "notesPl": "Adres referencyjny KAS reprezentujący rozliczenia giełdy Bybit w sieci TRON."
+  },
+  {
+    "address": "0xD6216fC19DB775Df9774a6E33526131dA7D19a2c",
+    "network": "ETH",
+    "name": "KuCoin Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "SC/GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy KuCoin w sieci Ethereum."
+  },
+  {
+    "address": "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf",
+    "network": "ETH",
+    "name": "KuCoin 16 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "SC/GLOBAL",
+    "notesPl": "Publiczny portfel operacyjny giełdy KuCoin w sieci Ethereum."
+  },
+  {
+    "address": "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe",
+    "network": "ETH",
+    "name": "Gate.io Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Gate.io w sieci Ethereum."
+  },
+  {
+    "address": "0x1C4b70a3968436B9A0a9cf5205c787eb81Bb558c",
+    "network": "ETH",
+    "name": "Gate.io 2 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Publiczny portfel operacyjny giełdy Gate.io w sieci Ethereum."
+  },
+  {
+    "address": "0x6262998Ced04146fA42253a5C0AF90CA02dfd2A3",
+    "network": "ETH",
+    "name": "Crypto.com Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "MT/SG",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy Crypto.com w sieci Ethereum."
+  },
+  {
+    "address": "0x46340b20830761efd32832A74d7169B29FEB9758",
+    "network": "ETH",
+    "name": "Crypto.com 2 (Hot Wallet)",
+    "role": "CEX",
+    "jurisdiction": "MT/SG",
+    "notesPl": "Publiczny portfel wypłat giełdy Crypto.com w sieci Ethereum."
+  },
+  {
+    "address": "0xaB5C66752a9e8167967685F1450532fB96d5d24f",
+    "network": "ETH",
+    "name": "HTX (Huobi) Hot Wallet",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny publiczny gorący portfel giełdy HTX (dawniej Huobi) w sieci Ethereum."
+  },
+  {
+    "address": "TCHUTx6CYtPwNXQ8XQEixfSRxkSrCNdLUd",
+    "network": "TRON",
+    "name": "HTX TRON Settlement",
+    "role": "CEX",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Adres referencyjny KAS reprezentujący rozliczenia giełdy HTX w sieci TRON."
+  },
+  {
+    "address": "0x9bF4980E11ed803b12740d861E36C3E8733187aD",
+    "network": "ETH",
+    "name": "Zondacrypto / BitBay (PL)",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL/EE",
+    "notesPl": "Adres referencyjny KAS reprezentujący węzeł rozliczeniowy giełdy Zondacrypto (dawniej BitBay) w sieci Ethereum (CASP z obsługą PLN)."
+  },
+  {
+    "address": "1CE9RRmFnhrXfG7ULF5YYkgDybqKd9pVV2",
+    "network": "BTC",
+    "name": "Zondacrypto / BitBay BTC",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL/EE",
+    "notesPl": "Adres referencyjny KAS reprezentujący rozliczenia BTC giełdy Zondacrypto (CASP PLN)."
+  },
+  {
+    "address": "TTzV657uYDkNohUj6sz1gAhKUMc2ENRhBk",
+    "network": "TRON",
+    "name": "Zondacrypto / BitBay TRON",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL/EE",
+    "notesPl": "Adres referencyjny KAS reprezentujący rozliczenia USDT TRC-20 giełdy Zondacrypto."
+  },
+  {
+    "address": "0x63b94e6bFe075e82f4cbd4347484386ddC382E6c",
+    "network": "ETH",
+    "name": "Ramp Network (PL/UK)",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL/GB",
+    "notesPl": "Adres referencyjny KAS dla bramki fiat-crypto Ramp Network (zakup i sprzedaż krypto za PLN/EUR)."
+  },
+  {
+    "address": "0x3cAf1C77F83c0cED0aB1abc1f9fbBE535AfE5B07",
+    "network": "ETH",
+    "name": "MoonPay Gateway",
+    "role": "CASP_P2P",
+    "jurisdiction": "US/EU",
+    "notesPl": "Adres referencyjny KAS dla bramki płatniczej MoonPay (on-ramp / off-ramp kartowy)."
+  },
+  {
+    "address": "0x51A19d7BB5fb31c9b81Ed8Be3350698F362C7B2C",
+    "network": "ETH",
+    "name": "Kantor OTC Warszawa P2P",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL",
+    "notesPl": "Adres referencyjny KAS dla stacjonarnego kantoru kryptowalut / punktu OTC P2P w Warszawie (rozliczenia gotówkowe i BLIK)."
+  },
+  {
+    "address": "TN8i1KPpSP3PBY7CnwhENxDqbQ35M8gxsh",
+    "network": "TRON",
+    "name": "Kantor OTC Warszawa P2P (TRON)",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL",
+    "notesPl": "Adres referencyjny KAS dla rozliczeń USDT TRC-20 w warszawskim kantorze OTC P2P."
+  },
+  {
+    "address": "0xA3A65517e8dfF495458f42ED11D0590192A0cdF4",
+    "network": "ETH",
+    "name": "Bitomat.com Settlement",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL",
+    "notesPl": "Adres referencyjny KAS dla rozliczeń sieci bitomatów Bitomat.com w Polsce (ETH / stablecoiny)."
+  },
+  {
+    "address": "1Hwi8WuSRK5sDAWS2iU2u5g8fWNoLB52tW",
+    "network": "BTC",
+    "name": "Bitomat.com Settlement BTC",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL",
+    "notesPl": "Adres referencyjny KAS dla rozliczeń Bitcoin sieci bitomatów Bitomat.com w Polsce."
+  },
+  {
+    "address": "0xF635FcF4042e380bbBe77FD345C85215734D5e8d",
+    "network": "ETH",
+    "name": "Revolut Crypto Custody",
+    "role": "CASP_P2P",
+    "jurisdiction": "LT/EU",
+    "notesPl": "Adres referencyjny KAS reprezentujący powierniczy portfel krypto aplikacji Revolut."
+  },
+  {
+    "address": "0x04d34897E0cd36bf0f2E84f8812C1a10995cD000",
+    "network": "ETH",
+    "name": "Ari10 Exchange (PL)",
+    "role": "CASP_P2P",
+    "jurisdiction": "PL",
+    "notesPl": "Adres referencyjny KAS dla polskiego operatora bramek i kantorów kryptowalutowych Ari10 (VASP PL)."
+  },
+  {
+    "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "network": "ETH",
+    "name": "Uniswap V2: Router 2",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt routera DEX Uniswap V2 w sieci Ethereum — nie jest portfelem osobistym."
+  },
+  {
+    "address": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "network": "ETH",
+    "name": "Uniswap V3: SwapRouter",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt SwapRouter protokołu Uniswap V3 — wymaga odrzucenia jako FP."
+  },
+  {
+    "address": "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
+    "network": "ETH",
+    "name": "Uniswap: Universal Router",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt Universal Router protokołu Uniswap (wymiany ERC-20 i NFT)."
+  },
+  {
+    "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+    "network": "ETH",
+    "name": "Uniswap V3: SwapRouter02",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt SwapRouter02 protokołu Uniswap V3 w sieci Ethereum."
+  },
+  {
+    "address": "0x1111111254EEB25477B68fb85Ed929f73A960582",
+    "network": "ETH",
+    "name": "1inch Aggregation Router v5",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt agregatora DEX 1inch v5 w sieci Ethereum."
+  },
+  {
+    "address": "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
+    "network": "ETH",
+    "name": "SushiSwap: Router",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt routera giełdy zdecentralizowanej SushiSwap."
+  },
+  {
+    "address": "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+    "network": "ETH",
+    "name": "Curve.fi: DAI/USDC/USDT 3pool",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt puli płynności stablecoinów Curve 3pool w sieci Ethereum."
+  },
+  {
+    "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+    "network": "ETH",
+    "name": "Aave V3: Pool",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt głównej puli pożyczkowej protokołu DeFi Aave V3."
+  },
+  {
+    "address": "0xEfF92A263d31888d860bD50809A8D171709b7b1c",
+    "network": "ETH",
+    "name": "PancakeSwap: Smart Router (ETH)",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt routera PancakeSwap w sieci Ethereum."
+  },
+  {
+    "address": "0xDef1C0ded9bec7F1a1670819833240f027b25EfF",
+    "network": "ETH",
+    "name": "0x Exchange Proxy",
+    "role": "DEX_ROUTER",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt routingu zleceń protokołu 0x w sieci Ethereum."
+  },
+  {
+    "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    "network": "ETH",
+    "name": "Tether: USDT (ERC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny smart kontrakt tokena stablecoin Tether USDT w sieci Ethereum (ERC-20)."
+  },
+  {
+    "address": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+    "network": "TRON",
+    "name": "Tether: USDT (TRC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny smart kontrakt tokena stablecoin Tether USDT w sieci TRON (TRC-20)."
+  },
+  {
+    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "network": "ETH",
+    "name": "Circle: USDC (ERC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "US",
+    "notesPl": "Oficjalny smart kontrakt tokena stablecoin USD Coin (USDC) emitenta Circle w sieci Ethereum."
+  },
+  {
+    "address": "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8",
+    "network": "TRON",
+    "name": "Circle: USDC (TRC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "US",
+    "notesPl": "Oficjalny smart kontrakt tokena stablecoin USDC w sieci TRON (TRC-20)."
+  },
+  {
+    "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    "network": "ETH",
+    "name": "MakerDAO: DAI (ERC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "DEFI",
+    "notesPl": "Oficjalny smart kontrakt zdecentralizowanego stablecoina DAI w sieci Ethereum."
+  },
+  {
+    "address": "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409",
+    "network": "ETH",
+    "name": "First Digital USD: FDUSD (ERC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "HK",
+    "notesPl": "Oficjalny smart kontrakt stablecoina FDUSD w sieci Ethereum."
+  },
+  {
+    "address": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
+    "network": "ETH",
+    "name": "PayPal USD: PYUSD (ERC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "US",
+    "notesPl": "Oficjalny smart kontrakt stablecoina PayPal USD (PYUSD) w sieci Ethereum."
+  },
+  {
+    "address": "0x4Fabb145d64652a948d72533023f6E7A623C7C53",
+    "network": "ETH",
+    "name": "Binance USD: BUSD (ERC-20)",
+    "role": "STABLECOIN",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Oficjalny smart kontrakt stablecoina BUSD (Paxos/Binance) w sieci Ethereum."
+  },
+  {
+    "address": "0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b",
+    "network": "ETH",
+    "name": "Tornado Cash: Router",
+    "role": "MIXER",
+    "jurisdiction": "SANCTIONED",
+    "notesPl": "Oficjalny smart kontrakt routera miksera Tornado Cash (objęty sankcjami OFAC — wymaga bezwzględnego odrzucenia jako portfel prywatny oraz osobnej flagi AML)."
+  },
+  {
+    "address": "0x12D66f87A04A9E220743712cE6d9bB1B5616B8Fc",
+    "network": "ETH",
+    "name": "Tornado Cash: 0.1 ETH Pool",
+    "role": "MIXER",
+    "jurisdiction": "SANCTIONED",
+    "notesPl": "Oficjalny smart kontrakt puli depozytowej 0.1 ETH miksera Tornado Cash."
+  },
+  {
+    "address": "0x47CE0C6eD5B0Ce3d3A51fdb1C52DC66a7c3c2936",
+    "network": "ETH",
+    "name": "Tornado Cash: 1 ETH Pool",
+    "role": "MIXER",
+    "jurisdiction": "SANCTIONED",
+    "notesPl": "Oficjalny smart kontrakt puli depozytowej 1 ETH miksera Tornado Cash."
+  },
+  {
+    "address": "0x910Cbd523D972eb0a6f4cAe4618aD62622b39DbF",
+    "network": "ETH",
+    "name": "Tornado Cash: 10 ETH Pool",
+    "role": "MIXER",
+    "jurisdiction": "SANCTIONED",
+    "notesPl": "Oficjalny smart kontrakt puli depozytowej 10 ETH miksera Tornado Cash."
+  },
+  {
+    "address": "0xA160cdAB225685dA1d56aa342Ad8841c3b53f291",
+    "network": "ETH",
+    "name": "Tornado Cash: 100 ETH Pool",
+    "role": "MIXER",
+    "jurisdiction": "SANCTIONED",
+    "notesPl": "Oficjalny smart kontrakt puli depozytowej 100 ETH miksera Tornado Cash."
+  },
+  {
+    "address": "0x722122dF12D4e14e13Ac3b6895a86e84145b6967",
+    "network": "ETH",
+    "name": "Tornado Cash: Proxy",
+    "role": "MIXER",
+    "jurisdiction": "SANCTIONED",
+    "notesPl": "Oficjalny smart kontrakt proxy miksera Tornado Cash."
+  },
+  {
+    "address": "0x165CD37b4C644C2921454429E7F9358d18A45e14",
+    "network": "ETH",
+    "name": "Aid For Ukraine (Official ETH)",
+    "role": "CHARITY",
+    "jurisdiction": "UA",
+    "notesPl": "Zweryfikowana oficjalna zbiórka publiczna rządu Ukrainy (Aid For Ukraine) — adres publicznej akcji humanitarnej, nie portfel prywatny podmiotu."
+  },
+  {
+    "address": "357a3So9CbsNfBBgFYACGvxxS6tMaDoa1P",
+    "network": "BTC",
+    "name": "Aid For Ukraine (Official BTC)",
+    "role": "CHARITY",
+    "jurisdiction": "UA",
+    "notesPl": "Zweryfikowana oficjalna zbiórka publiczna Aid For Ukraine w sieci Bitcoin."
+  },
+  {
+    "address": "0x8B99F3660622e21f2910ECCA7fBe51d654a1517D",
+    "network": "ETH",
+    "name": "Binance Charity Foundation",
+    "role": "CHARITY",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Zweryfikowany publiczny adres fundacji charytatywnej Binance Charity Foundation w sieci Ethereum."
+  },
+  {
+    "address": "0x4D9339dd97db55e3B9bCBE65dE39fF9c04d1C2cd",
+    "network": "ETH",
+    "name": "Giveth Charity Pool",
+    "role": "CHARITY",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Zweryfikowany publiczny adres puli charytatywnej platformy darowizn Giveth (Web3)."
+  },
+  {
+    "address": "0xde21F729137C5Af1b01d73aF1dC21eFfa2B8a0d6",
+    "network": "ETH",
+    "name": "Gitcoin Grants Matching Pool",
+    "role": "CHARITY",
+    "jurisdiction": "GLOBAL",
+    "notesPl": "Zweryfikowana publiczna pula dopasowania grantów Gitcoin Grants (finansowanie dóbr publicznych)."
+  },
+  {
+    "address": "0xdff1f31F8C41855E8541EbC9584155B437deE430",
+    "network": "ETH",
+    "name": "PAH / Pomagam Crypto Pool",
+    "role": "CHARITY",
+    "jurisdiction": "PL",
+    "notesPl": "Adres referencyjny KAS reprezentujący publiczną zbiórkę charytatywną / pomocową w Polsce."
+  },
+  {
+    "address": "0x000000000000000000000000000000000000dEaD",
+    "network": "ETH",
+    "name": "Burn Address (0x...dEaD)",
+    "role": "BURN",
+    "jurisdiction": "PROTOCOL",
+    "notesPl": "Powszechny nieodwracalny adres spalania tokenów (burn address) w sieci Ethereum."
+  },
+  {
+    "address": "0x0000000000000000000000000000000000000000",
+    "network": "ETH",
+    "name": "Zero / Null Burn Address (0x000...000)",
+    "role": "BURN",
+    "jurisdiction": "PROTOCOL",
+    "notesPl": "Adres zerowy protokołu Ethereum używany przy spalaniu i tworzeniu kontraktów."
+  },
+  {
+    "address": "1BitcoinEaterAddressDontSendf59kuE",
+    "network": "BTC",
+    "name": "Bitcoin Eater Burn Address",
+    "role": "BURN",
+    "jurisdiction": "PROTOCOL",
+    "notesPl": "Znany publiczny nieodwracalny adres spalania w sieci Bitcoin (brak klucza prywatnego)."
+  },
+  {
+    "address": "1111111111111111111114oLvT2",
+    "network": "BTC",
+    "name": "Bitcoin All-Zero Burn Address",
+    "role": "BURN",
+    "jurisdiction": "PROTOCOL",
+    "notesPl": "Publiczny adres zerowy (hash160 = 0x00...00) w sieci Bitcoin."
+  }
+]

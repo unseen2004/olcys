@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: olcys-postgres
+    environment:
+      POSTGRES_DB: olcys
+      POSTGRES_USER: olcys
+      POSTGRES_PASSWORD: olcys_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U olcys -d olcys"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: olcys-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/olcys
+      SPRING_DATASOURCE_USERNAME: olcys
+      SPRING_DATASOURCE_PASSWORD: olcys_dev_password
+      OLCYS_AI_PROVIDER: ${OLCYS_AI_PROVIDER:-local-rules}
+      OLCYS_AI_BASE_URL: ${OLCYS_AI_BASE_URL:-http://ollama:11434/v1}
+      OLCYS_AI_MODEL: ${OLCYS_AI_MODEL:-llama3.1:8b}
+      OLCYS_AI_ALLOW_EXTERNAL: "false"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: olcys-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: olcys-ollama
+    profiles:
+      - ai
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+
+volumes:
+  pgdata:
+  ollamadata:

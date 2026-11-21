@@ -1,0 +1,168 @@
+[
+  {
+    "id": "scenariusz-1-janek",
+    "titlePl": "Scenariusz 1: Jan Kowalski (@krypto_janek) — Ukryte przychody P2P i rotacja portfela",
+    "subtitlePl": "Hybrydowy OSINT: Synergia +15 pp, Firewall FP (Binance/Uniswap) oraz detekcja podmiany portfela v1 -> v2",
+    "descriptionPl": "Analiza podmiotu prowadzącego niezgłoszoną sprzedaż kryptowalut P2P/BLIK oraz rozliczenia B2B. W kroku 1 (v1) koreluje profil GitHub z ogłoszeniem KantorP2P.pl (+15 pp -> 100%), archiwum Wayback (BTC) i wpisem na forum zawierającym fałszywe trafienia (Uniswap V3 + Binance). W kroku 2 (v2) demonstruje podmianę portfela ETH na profilu GitHub.",
+    "expectedOutcomePl": "Krok 1: Portfel ETH 0x71C7...76F (100% pewności), portfel BTC bc1q...mdq (70%), odrzucone FP: Uniswap V3 (0%) i Binance 14 (0% z odnotowaną interakcją), sygnały CEX_OFFRAMP, STABLECOIN_CONVERSION, P2P_OR_GATEWAY. Krok 2: Alert podmiany portfela na GitHub na 0xd8dA...045 (100%) oraz wzrost wolumenu.",
+    "displayName": "Jan Kowalski (@krypto_janek)",
+    "identifiers": [
+      { "type": "NICK", "value": "krypto_janek" },
+      { "type": "FULL_NAME", "value": "Jan Kowalski" },
+      { "type": "EMAIL", "value": "janek.dev@example.pl" }
+    ],
+    "recommendedMode": "HYBRID",
+    "sources": ["GitHub", "KantorP2P.pl", "WaybackArchive", "ForumKrypto.pl"],
+    "networks": ["ETH", "BTC"],
+    "supportsWalletRotationDemo": true,
+    "personalAddresses": [
+      "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+      "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+      "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+    ],
+    "evidences": [
+      {
+        "minStep": 1,
+        "maxStep": 1,
+        "sourceName": "GitHub",
+        "sourceCategory": "CODE_PROFILE",
+        "url": "https://github.com/krypto_janek",
+        "matchedIdentifier": "krypto_janek",
+        "contextHint": "OWN_PROFILE_VERIFIED",
+        "snippet": "Oficjalny profil GitHub użytkownika Jan Kowalski (@krypto_janek), kontakt: janek.dev@example.pl. Rozliczenia konsultacji B2B i wsparcie open-source ETH: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+      },
+      {
+        "minStep": 1,
+        "maxStep": 1,
+        "sourceName": "KantorP2P.pl",
+        "sourceCategory": "P2P_MARKETPLACE",
+        "url": "https://kantorp2p.example.pl/ogloszenie/8841-krypto_janek",
+        "matchedIdentifier": "krypto_janek",
+        "contextHint": "TRANSACTIONAL_CONTEXT",
+        "snippet": "Ogłoszenie sprzedaży P2P #8841 (2026-03-14): Sprzedam ETH i USDT za PLN (BLIK / przelew natychmiastowy). Wystawca: @krypto_janek. Adres rozliczeniowy ETH: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+      },
+      {
+        "minStep": 2,
+        "maxStep": null,
+        "sourceName": "GitHub",
+        "sourceCategory": "CODE_PROFILE",
+        "url": "https://github.com/krypto_janek",
+        "matchedIdentifier": "krypto_janek",
+        "contextHint": "OWN_PROFILE_VERIFIED",
+        "snippet": "Oficjalny profil GitHub użytkownika Jan Kowalski (@krypto_janek), kontakt: janek.dev@example.pl. Zaktualizowany adres rozliczeniowy ETH (rotacja portfela 2026-04-09): 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+      },
+      {
+        "minStep": 2,
+        "maxStep": null,
+        "sourceName": "KantorP2P.pl",
+        "sourceCategory": "P2P_MARKETPLACE",
+        "url": "https://kantorp2p.example.pl/ogloszenie/9120-krypto_janek",
+        "matchedIdentifier": "krypto_janek",
+        "contextHint": "TRANSACTIONAL_CONTEXT",
+        "snippet": "Nowe ogłoszenie sprzedaży P2P #9120 (2026-04-10): Wymiana ETH/USDT na PLN (BLIK / ekspres). Wystawca: @krypto_janek. Nowy portfel rozliczeniowy ETH: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+      },
+      {
+        "minStep": 1,
+        "maxStep": null,
+        "sourceName": "WaybackArchive",
+        "sourceCategory": "WEB_ARCHIVE",
+        "url": "https://web.archive.org/web/20260210/https://janek-dev.example.pl/kontakt",
+        "matchedIdentifier": "janek.dev@example.pl",
+        "contextHint": "TRANSACTIONAL_CONTEXT",
+        "snippet": "Archiwalna strona usług B2B i stopka e-mail (janek.dev@example.pl, Jan Kowalski): Płatności za zlecenia programistyczne akceptowane także w Bitcoin na adres SegWit bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+      },
+      {
+        "minStep": 1,
+        "maxStep": null,
+        "sourceName": "ForumKrypto.pl",
+        "sourceCategory": "FORUM",
+        "url": "https://forumkrypto.example.pl/t/wypalata-eth-na-pln/14209",
+        "matchedIdentifier": "krypto_janek",
+        "contextHint": "FORUM_DISCUSSION",
+        "snippet": "Wpis @krypto_janek w wątku 'Wypłata ETH na PLN': Do zamiany na USDT używam kontraktu Uniswap V3 0xE592427A0AEce92De3Edee1F18E0157C05861564, a środki do wypłaty kieruję na gorący portfel Binance 0x28C6c06298d514Db089934071355E5743bf21d60"
+      }
+    ]
+  },
+  {
+    "id": "scenariusz-2-reverse-osint",
+    "titlePl": "Scenariusz 2: Reverse-OSINT — Niezgłoszony kantor OTC (@marek_otc_kantor)",
+    "subtitlePl": "Start od adresu ETH -> powiązanie z komunikatorem Telegram, Reddit i siecią TRON (USDT TRC-20)",
+    "descriptionPl": "Dochodzenie odwrotne (Reverse OSINT) rozpoczęte od publicznego adresu ETH podejrzewanego o prowadzenie niezarejestrowanego kantoru OTC. System identyfikuje kanał Telegram OTC i wątek Reddit, ujawnia portfel TRON oraz wykrywa wszystkie 4 typy sygnałów Fiat Cash-Out.",
+    "expectedOutcomePl": "Potwierdzone portfele: ETH 0xAb58...eC9B (85%) i TRON T9yD14...xuWwb (85% dzięki synergii Telegram + Reddit), sygnały CEX_OFFRAMP, STABLECOIN_CONVERSION, P2P_OR_GATEWAY i RECURRING_CASHOUT (Zondacrypto, Kraken, Binance TRON).",
+    "displayName": "Sprawa Reverse-OSINT: Niezgłoszony kantor OTC",
+    "identifiers": [
+      { "type": "CRYPTO_ADDRESS", "value": "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B" },
+      { "type": "TELEGRAM_ID", "value": "@marek_otc_kantor" }
+    ],
+    "recommendedMode": "SYNTHETIC",
+    "sources": ["Telegram OTC", "Reddit"],
+    "networks": ["ETH", "TRON"],
+    "supportsWalletRotationDemo": false,
+    "personalAddresses": [
+      "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+      "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb"
+    ],
+    "evidences": [
+      {
+        "minStep": 1,
+        "maxStep": null,
+        "sourceName": "Telegram OTC",
+        "sourceCategory": "MESSENGER",
+        "url": "https://t.me/otc_polska_krypto/4821",
+        "matchedIdentifier": "@marek_otc_kantor",
+        "contextHint": "TRANSACTIONAL_CONTEXT",
+        "snippet": "Kanał OTC Polska (2026-03-20): @marek_otc_kantor prowadzi skup i sprzedaż ETH/USDT za PLN (gotówka Warszawa / BLIK). Rozliczenia ETH: 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B oraz prywatny portfel TRON (USDT TRC-20): T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb"
+      },
+      {
+        "minStep": 1,
+        "maxStep": null,
+        "sourceName": "Reddit",
+        "sourceCategory": "FORUM",
+        "url": "https://www.reddit.com/r/kryptowaluty/comments/otc_warszawa_2026",
+        "matchedIdentifier": "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+        "contextHint": "FORUM_DISCUSSION",
+        "snippet": "Wątek r/kryptowaluty o rozliczeniach OTC: Użytkownicy wskazują adres ETH 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B oraz adres TRON T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb jako portfele operacyjne @marek_otc_kantor."
+      }
+    ]
+  },
+  {
+    "id": "scenariusz-3-szum-fp",
+    "titlePl": "Scenariusz 3: Weryfikacja negatywna — Szum informacyjny i False Positives",
+    "subtitlePl": "Ochrona przed błędnym przypisaniem majątku: komentarze giveaway (20%) oraz adresy charytatywne i mikser (0%)",
+    "descriptionPl": "Scenariusz testujący odporność Firewalla FP na fałszywe trafienia. Podmiot @lucky_drop_2026 uczestniczy w masowych konkursach airdropowych i cytuje na forum adres zbiórki Aid For Ukraine oraz routera Tornado Cash. System utrzymuje niski wynik dla szumu (20%) i odrzuca adresy publiczne z wynikiem 0%.",
+    "expectedOutcomePl": "Portfel 0x5aAe...eAed z wynikiem 20% (MASS_COMMENT_NOISE, brak synergii i sygnałów Cash-Out); odrzucone FP (0%): Aid For Ukraine (CHARITY) oraz Tornado Cash Router (MIXER / SMART_CONTRACT).",
+    "displayName": "Weryfikacja negatywna: @lucky_drop_2026 (Szum i False Positives)",
+    "identifiers": [
+      { "type": "NICK", "value": "lucky_drop_2026" }
+    ],
+    "recommendedMode": "SYNTHETIC",
+    "sources": ["Reddit", "ForumKrypto.pl"],
+    "networks": ["ETH"],
+    "supportsWalletRotationDemo": false,
+    "personalAddresses": [
+      "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+    ],
+    "evidences": [
+      {
+        "minStep": 1,
+        "maxStep": null,
+        "sourceName": "Reddit",
+        "sourceCategory": "GIVEAWAY_NOISE",
+        "url": "https://www.reddit.com/r/CryptoGiveaways/comments/airdrop_2026/lucky_drop_2026",
+        "matchedIdentifier": "lucky_drop_2026",
+        "contextHint": "MASS_COMMENT_NOISE",
+        "snippet": "Masowy komentarz w konkursie / giveaway airdrop (użytkownik lucky_drop_2026): Zgłaszam udział w losowaniu darmowych tokenów i nagród NFT! Adres: 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+      },
+      {
+        "minStep": 1,
+        "maxStep": null,
+        "sourceName": "ForumKrypto.pl",
+        "sourceCategory": "FORUM",
+        "url": "https://forumkrypto.example.pl/t/zbiorki-i-prywatnosc-eth/19402",
+        "matchedIdentifier": "lucky_drop_2026",
+        "contextHint": "FORUM_DISCUSSION",
+        "snippet": "Wpis @lucky_drop_2026: Zobaczcie oficjalny adres zbiórki humanitarnej Aid For Ukraine 0x165CD37b4C644C2921454429E7F9358d18A45e14 oraz objęty sankcjami kontrakt Tornado Cash Router 0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b"
+      }
+    ]
+  }
+]
